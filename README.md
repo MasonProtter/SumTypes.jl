@@ -1,6 +1,8 @@
 # SumTypes.jl
 
-A julian implementation of sum types. Sum types, sometimes called 'tagged unions' are the type system equivalent of the [disjoint union](https://en.wikipedia.org/wiki/Disjoint_union) operation (which is *not* a union in the traditional sense). From a category theory perspective, sum types are interesting because they are *dual* to `Tuple`s.
+A julian implementation of sum types. Sum types, sometimes called 'tagged unions' are the type system equivalent of the [disjoint union](https://en.wikipedia.org/wiki/Disjoint_union) operation (which is *not* a union in the traditional sense). From a category theory perspective, sum types are interesting because they are *dual* to `Tuple`s (whatever that means).
+
+At the end of the day, a sum type is really just a fancy word for a container that can store data of a few different, pre-declared types and is labelled by how it was instantiated.
 
 Users of statically typed programming languages often prefer Sum types to unions because it makes type checking easier. In a dynamic language like julia, the benefit of these objects is less obvious, but perhaps someone can find a fun use case.
 
