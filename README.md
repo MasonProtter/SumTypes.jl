@@ -3,7 +3,7 @@
 A julian implementation of sum types. Sum types, sometimes called
 'tagged unions' are the type system equivalent of the [disjoint
 union](https://en.wikipedia.org/wiki/Disjoint_union) operation (which
-is *not* a union in the traditional sense). In a category theory
+is *not* a union in the traditional sense). From a category theory
 perspective, sum types are interesting because they are *dual* to
 `Tuple`s.
 
@@ -16,6 +16,8 @@ Let's explore a very fundamental sum type (fundamental in the sense
 that all other sum types may be derived from it):
 
 ```julia
+julia> using SumTypes
+
 julia> @sum_type Either{A, B} begin
            Left{A, B}(::A)
            Right{A, B}(::B)
