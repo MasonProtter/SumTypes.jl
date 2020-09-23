@@ -1,19 +1,10 @@
 # SumTypes.jl
 
-A julian implementation of sum types. Sum types, sometimes called
-'tagged unions' are the type system equivalent of the [disjoint
-union](https://en.wikipedia.org/wiki/Disjoint_union) operation (which
-is *not* a union in the traditional sense). From a category theory
-perspective, sum types are interesting because they are *dual* to
-`Tuple`s.
+A julian implementation of sum types. Sum types, sometimes called 'tagged unions' are the type system equivalent of the [disjoint union](https://en.wikipedia.org/wiki/Disjoint_union) operation (which is *not* a union in the traditional sense). From a category theory perspective, sum types are interesting because they are *dual* to `Tuple`s.
 
-Users of statically typed programming langauges often prefer Sum types
-to unions because it makes type checking easier. In a dynamic langauge
-like julia, the benefit of these objects is less obvious, but perhaps
-someone can find a fun usecase.
+Users of statically typed programming languages often prefer Sum types to unions because it makes type checking easier. In a dynamic language like julia, the benefit of these objects is less obvious, but perhaps someone can find a fun use case.
 
-Let's explore a very fundamental sum type (fundamental in the sense
-that all other sum types may be derived from it):
+Let's explore a very fundamental sum type (fundamental in the sense that all other sum types may be derived from it):
 
 ```julia
 julia> using SumTypes
@@ -24,13 +15,8 @@ julia> @sum_type Either{A, B} begin
        end
 ```
 
-This says that we have a sum type `Either{A, B}`, and it can hold a
-value that is either of type `A` or of type `B`. `Either` has two
-'constructors' which we have called `Left{A,B}` and
-`Right{A,B}`. These exist essentially as a way to have instances of
-`Either` carry a record of how they were constructed by being wrapped
-in dummy structs named `Left` or `Right`. Here we construct some
-instances of `Either`:
+This says that we have a sum type `Either{A, B}`, and it can hold a value that is either of type `A` or of type `B`. `Either` has two 'constructors' which we have called `Left{A,B}` and `Right{A,B}`. These exist essentially as a way to have instances of
+`Either` carry a record of how they were constructed by being wrapped in dummy structs named `Left` or `Right`. Here we construct some instances of `Either`:
 
 ```julia
 julia> Left{Int, Int}(1)
@@ -80,10 +66,7 @@ Fruit(Orange())
 
 ## Pattern matching on Sum types
 
-Because of the structure of sum types, they lend themselves naturally
-to things like pattern matching. As such, `SumTypes.jl` re-exports
-`MLStyle.@match` from MLStyle.jl and automatically declares Sum types
-as MLStyle record types so they can be destructured:
+Because of the structure of sum types, they lend themselves naturally to things like pattern matching. As such, `SumTypes.jl` re-exports `MLStyle.@match` from [MLStyle.jl](https://github.com/thautwarm/MLStyle.jl/) and automatically declares Sum types as MLStyle record types so they can be destructured:
 
 ```julia
 julia> @match Left{Int, Int}(1) begin
