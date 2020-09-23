@@ -36,9 +36,9 @@ Here's a recursive list sum type:
 
 ```julia 
 julia> @sum_type List{A} begin 
-	Nil{A}()
-	Cons{A}(::A, ::List{A}) 
-end
+	       Nil{A}()
+	       Cons{A}(::A, ::List{A}) 
+       end
 
 julia> Nil{Int}()
 List{Int64}(Nil{Int64}())
