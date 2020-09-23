@@ -72,12 +72,13 @@ Because of the structure of sum types, they lend themselves naturally to things 
 
 ```julia
 julia> @match Left{Int, Int}(1) begin
-           Either(Left(x)) => x + 1
+           Either(Left(x))  => x + 1
+           Either(Right(x)) => x - 1
        end
 2
 
 julia> @match Right{Int, Int}(1) begin
-           Either(Left(x)) => x + 1
+           Either(Left(x))  => x + 1
            Either(Right(x)) => x - 1
        end
 0
