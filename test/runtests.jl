@@ -34,6 +34,3 @@ end
     Nil{A}()
     Cons{A}(::A, ::List{A}) 
 end
-
-@test Nil{Int}() isa List{Int}
-@test Cons{Int}(1, Cons{Int}(1, Nil{Int}())) isa List{Int}
