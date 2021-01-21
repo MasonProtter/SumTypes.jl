@@ -14,18 +14,15 @@ end
     Right{A, B}(::B)
 end
 
-@test 2 == begin
-    @match Left{Int, Int}(1) begin
-        Either(Left(x)) => x + 1
-    end
+let x = Right{Int, Int}(1)
+    @case Either f((x,)::Left)  = x + 1
+    @case Either f((x,)::Right) = x - 1
+    @test f(x) == 0
+    @test SumTypes.iscomplete(f, Either)
 end
 
-@test 0 == begin
-    @match Right{Int, Int}(1) begin
-        Either(Left(x)) => x + 1
-        Either(Right(x)) => x - 1
-    end
+let x = Left{Int, Int}(1)
+    @case Either f((x,)::Left)  = x + 1
+    @test f(x) == 2
+    @test !(SumTypes.iscomplete(f, Either))
 end
-
-
-

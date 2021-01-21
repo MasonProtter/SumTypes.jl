@@ -1,8 +1,12 @@
 module SumTypes
 
-export @sum_type, @match
+export @sum_type, @case #@match
 
-using MLStyle: @match, @as_record
+using MacroTools: MacroTools
+
+function match end
+function parent end
+constructors(::Type{T}) where T = throw(error("$T is not a sum type"))
 
 """
     @sum_type(T, blk)
@@ -12,20 +16,20 @@ Create a sum type `T` with constructors in the codeblock `blk`.
 Examples:
 *) An unparameterized sum type `Foo` with constructors `Bar` and `Baz`
 
-    julia> @sum_type Foo begin
-               Bar(::Int)
-               Baz(::Float64)
-           end
+    @sum_type Foo begin
+        Bar(::Int)
+        Baz(::Float64)
+    end
 
     julia> Bar(1)
     Foo(Bar(1))
 
 *) 'The' `Either` sum type with constructors `Left` and `Right`
 
-    julia> @sum_type Either{A, B} begin
-               Left{A, B}(::A)
-               Right{A, B}(::B)
-           end
+    @sum_type Either{A, B} begin
+        Left{A, B}(::A)
+        Right{A, B}(::B)
+    end
 
     julia> Left{Int, Int}(1)
     Either{Int64,Int64}(Left{Int64,Int64}(1))
@@ -35,10 +39,10 @@ Examples:
 
 *) A recursive `List` sum type with constructors `Nil` and `Cons`
 
-    julia> @sum_type List{A} begin
-               Nil{A}()
-               Cons{A}(::A, ::List{A})
-           end
+    @sum_type List{A} begin
+        Nil{A}()
+        Cons{A}(::A, ::List{A})
+    end
 
     julia> Nil{Int}()
     List{Int64}(Nil{Int64}())
@@ -85,22 +89,79 @@ macro sum_type(T, blk::Expr)
     out = Expr(:toplevel)
     foreach(constructors) do (name, params, nameparam, field_names, types)
         nameparam_constrained = isempty(params) ? name : :($name{$(T_params_constrained...)})
-        struct_def = Expr(:struct, false, nameparam_constrained, 
-                  Expr(:block, 
-                       field_names..., 
-                       :($nameparam($(field_names...)) where {$(T_params_constrained...)} = $(Expr(:new, T, Expr(:new, nameparam, field_names...))))))
+        struct_def = Expr(
+            :struct, false, nameparam_constrained, 
+            Expr(:block, 
+                 field_names..., 
+                 :($nameparam($(field_names...)) where {$(T_params_constrained...)} =
+                   $(Expr(:new, T, Expr(:new, nameparam, field_names...))))))
         push!(out.args, struct_def)
-        push!(out.args, :($(@__MODULE__).@as_record $name))
+        # push!(out.args, :($SumTypes.@as_record $name))
+        push!(out.args, :($Base.indexed_iterate(x::$name, i::Int, state=1) = (Base.@_inline_meta; (getfield(x, i), i+1))))
+        push!(out.args, :($SumTypes.parent(::Type{<:$name}) = $T_name))
     end
+
+    con_nameparams = (x -> x.nameparam).(constructors)
+    con_names      = (x -> x.name     ).(constructors)
+    
     sum_struct_def = quote 
         struct $T
-            data::Union{$((x -> x.nameparam).(constructors)...)}
+            data::Union{$(con_nameparams...)}
             _1() = nothing
         end
     end
+    
     push!(out.args, sum_struct_def)
-    push!(out.args, :($(@__MODULE__).@as_record $T_name))
+    # push!(out.args, :($(@__MODULE__).@as_record $T_name))
+    push!(out.args, :($SumTypes.constructors(::Type{<:$T_name}) = ($(con_names...),)))
+    push!(out.args, :($SumTypes.match(f, x::$T_name) = (_x = x.data; $(_unionsplit(con_names, :(f(_x)))))))
     esc(out)
 end
+
+"""
+    @case T fdef
+
+Define a pettern matcher `fdef` to deconstruct a `SumType`
+
+Examples:
+
+    @case Either f((x,)::Left)  = x + 1
+    @case Either f((x,)::Right) = x - 1
+
+    
+
+"""
+macro case(T, fdef)
+    d = MacroTools.splitdef(fdef)
+    f = esc(d[:name])
+    T = esc(T)
+    quote
+        $f(x::$T)= $SumTypes.match($f, x)
+        $(:($fdef) |> esc)
+    end
+end
+
+function _unionsplit(thetypes, call)
+    MacroTools.@capture(call, f_(arg_))
+    first_type, rest_types = Iterators.peel(thetypes)
+    code = :(if $arg isa $first_type; $call end)
+    the_args = code.args
+    for next_type in rest_types
+        clause = :(if $arg isa $next_type # use `if` so this parses, then change to `elseif`
+                   $call
+                   end)
+        clause.head = :elseif
+        push!(the_args, clause)
+        the_args = clause.args
+    end
+    push!(the_args, :(@assert false))
+    return code
+end
+
+iscomplete(matcher, ::Type{T}) where {T} = all(constructors(T)) do con
+    hasmethod(matcher, (con,))
+end
+
+
 
 end # module

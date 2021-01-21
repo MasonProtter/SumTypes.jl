@@ -68,18 +68,33 @@ Fruit(Orange())
 
 ## Pattern matching on Sum types
 
-Because of the structure of sum types, they lend themselves naturally to things like pattern matching. As such, `SumTypes.jl` re-exports `MLStyle.@match` from [MLStyle.jl](https://github.com/thautwarm/MLStyle.jl/) and automatically declares Sum types as MLStyle record types so they can be destructured:
+Because of the structure of sum types, they lend themselves naturally to things like pattern matching. SumTypes.jl exposes a `@case` macro for defining pattern matching cases: 
 
 ```julia
-julia> @match Left{Int, Int}(1) begin
-           Either(Left(x))  => x + 1
-           Either(Right(x)) => x - 1
-       end
+@case Either f((x,)::Left)  = x + 1
+@case Either f((x,)::Right) = x - 1
+ 
+l = Left{Int, Int}(1)
+r = Right{Int, Int}(1)
+
+
+julia> f(l)
 2
 
-julia> @match Right{Int, Int}(1) begin
-           Either(Left(x))  => x + 1
-           Either(Right(x)) => x - 1
-       end
+julia> f(r)
 0
+``` 
+
+You can use `SumTypes.iscomplete` to check if all the cases of a sum type are covered:
+```julia
+@sum_type MyBool begin
+    True()
+    False()
+end
+@case MyBool g(::True) = "All good!"
+
+julia> SumTypes.iscomplete(g, MyBool)
+false
 ```
+
+For more advanced mattern matching utilities, consider [MLStyle.jl](https://github.com/thautwarm/MLStyle.jl/).
