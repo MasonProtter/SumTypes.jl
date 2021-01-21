@@ -98,10 +98,16 @@ macro sum_type(T, blk::Expr)
                  field_names_typed..., 
                  :($nameparam($(field_names...)) where {$(T_params_constrained...)} =
                    $(Expr(:new, T, Expr(:new, nameparam, field_names...))))))
-        push!(out.args, struct_def)
-        # push!(out.args, :($SumTypes.@as_record $name))
-        push!(out.args, :($Base.indexed_iterate(x::$name, i::Int, state=1) = (Base.@_inline_meta; (getfield(x, i), i+1))))
-        push!(out.args, :($SumTypes.parent(::Type{<:$name}) = $T_name))
+        ex = quote
+            $struct_def
+            @inline $Base.iterate(x::$name, s = 1) = s ≤ fieldcount($name) ? (getfield(x, s), s + 1) : nothing
+            $Base.indexed_iterate(x::$name, i::Int, state=1) = (Base.@_inline_meta; (getfield(x, i), i+1))
+            $SumTypes.parent(::Type{<:$name}) = $T_name
+            function $Base.show(io::IO, x::$name)
+                print(io, "$($name)(", join([x...], ", "), ")")
+            end 
+        end
+        push!(out.args, ex)
     end
 
     con_nameparams = (x -> x.nameparam).(constructors)
@@ -111,6 +117,9 @@ macro sum_type(T, blk::Expr)
         struct $T
             data::Union{$(con_nameparams...)}
             _1() = nothing
+        end
+        function $Base.show(io::IO, x::$T_name)
+            print(io, "$(typeof(x)): ", x.data)
         end
     end
     
