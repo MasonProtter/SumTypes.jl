@@ -50,7 +50,7 @@ Examples:
     julia> Cons{Int}(1, Cons{Int}(1, Nil{Int}()))
     List{Int64}(Cons{Int64}(1, List{Int64}(Cons{Int64}(1, List{Int64}(Nil{Int64}()))))) 
 """
-macro sum_type(T, blk::Expr)
+macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
     @assert blk isa Expr && blk.head == :block
     T_name, T_params, T_params_constrained = if T isa Symbol
         T, [], []
@@ -129,9 +129,11 @@ macro sum_type(T, blk::Expr)
         $SumTypes.match(f, x::$T_name) = (_x = x.data; $(_unionsplit(con_names, :(f(_x)))))
     end
     push!(out.args, ex)
-    #@show sum_struct_def
-    x = 1
-    pushfirst!(out.args, f(sum_struct_def)) # hack to allow mutually recursive types
+    MacroTools.@capture(recur, recursive=use_recur_) ||
+        throw("Malformed recur option. Expected `recursive=true` or `recursive=false`")
+    if use_recur
+        pushfirst!(out.args, f(sum_struct_def)) # hack to allow mutually recursive types
+    end
     esc(out)
 end
 

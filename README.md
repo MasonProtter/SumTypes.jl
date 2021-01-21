@@ -31,14 +31,27 @@ Either{Int64, Float64}: Right(1.0)
 Note that unlike `Union{A, B}`, `A <: Either{A,B}` is false, and
 `Either{A, A}` is distinct from `A`.
 
+Here's a recursive List sum type:
+```julia
+julia> @sum_type List{A, L} begin 
+           Nil{A, L}()
+           Cons{A, L}(::A, ::L) 
+       end
 
-Here's a recursive list sum type:
+julia> Nil{Int, List}()
+List{Int64, List}: Nil()
+
+julia> Cons{Int, List}(1, Cons{Int, List}(1, Nil{Int, List}()))
+List{Int64, List}: Cons(1, List{Int64, List}: Cons(1, List{Int64, List}: Nil()))
+```
+
+On Julia 1.5+, there's an evil trick to have recursive type parameters. Here's a recursive list sum type using that trick (don't use this in serious code. At the very least, it has a problem in github actions, though it works fine locally)
 
 ```julia 
 julia> @sum_type List{A} begin 
 	       Nil{A}()
 	       Cons{A}(::A, ::List{A}) 
-       end
+       end recursive=true
 
 julia> Nil{Int}()
 List{Int64}: Nil()
@@ -46,7 +59,6 @@ List{Int64}: Nil()
 julia> Cons{Int}(1, Cons{Int}(1, Nil{Int}()))
 List{Int64}: Cons(1, List{Int64}: Cons(1, List{Int64}: Nil()))
 ```
-
 
 You can also use sum types to define a type level enum:
 ```julia
