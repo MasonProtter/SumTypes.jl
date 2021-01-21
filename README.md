@@ -96,6 +96,8 @@ julia> f(l)
 julia> f(r)
 0
 ``` 
+Calling `f` on an `Either` type will use manually unrolled dispatch, rather than julia's automatic dynamic 
+dispatch machinery. That is, the above code becomes a series of `if/else` statements rather than a real dynamic dispatch.
 
 You can use `SumTypes.iscomplete` to check if all the cases of a sum type are covered:
 ```julia

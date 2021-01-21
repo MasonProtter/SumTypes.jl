@@ -126,7 +126,10 @@ macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
             print(io, "$(typeof(x)): ", x.data)
         end
         $SumTypes.constructors(::Type{<:$T_name}) = ($(con_names...),)
-        $SumTypes.match(f, x::$T_name) = (_x = x.data; $(_unionsplit(con_names, :(f(_x)))))
+        function $SumTypes.match(f, x::$T) where {$(T_params...)}
+            _x = x.data
+            $(_unionsplit(con_nameparams, :(f(_x))))
+        end
     end
     push!(out.args, ex)
     MacroTools.@capture(recur, recursive=use_recur_) ||
@@ -142,15 +145,14 @@ f(x) = :(try $x catch; nothing end) #split out to it's own function to to possib
 """
     @case T fdef
 
-Define a pettern matcher `fdef` to deconstruct a `SumType`
+Define a pattern matcher `fdef` to deconstruct a `SumType`
 
 Examples:
 
     @case Either f((x,)::Left)  = x + 1
     @case Either f((x,)::Right) = x - 1
 
-    
-
+Calling `f` on an `Either` type will use manually unrolled dispatch, rather than julia's automatic dynamic dispatch machinery.That is, it'll emit code that is just a series of if/else calls.
 """
 macro case(T, fdef)
     d = MacroTools.splitdef(fdef)
