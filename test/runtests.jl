@@ -26,3 +26,6 @@ let x = Left{Int, Int}(1)
     @test f(x) == 2
     @test !(SumTypes.iscomplete(f, Either))
 end
+
+@test_throws TypeError Left{Int, String}("hi")
+@test_throws TypeError Right{Int, String}(1)

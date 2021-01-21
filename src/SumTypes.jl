@@ -89,10 +89,13 @@ macro sum_type(T, blk::Expr)
     out = Expr(:toplevel)
     foreach(constructors) do (name, params, nameparam, field_names, types)
         nameparam_constrained = isempty(params) ? name : :($name{$(T_params_constrained...)})
+        field_names_typed = map(field_names, types) do name, type
+            :($name :: $type)
+        end
         struct_def = Expr(
             :struct, false, nameparam_constrained, 
             Expr(:block, 
-                 field_names..., 
+                 field_names_typed..., 
                  :($nameparam($(field_names...)) where {$(T_params_constrained...)} =
                    $(Expr(:new, T, Expr(:new, nameparam, field_names...))))))
         push!(out.args, struct_def)
