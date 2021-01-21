@@ -45,7 +45,7 @@ julia> Cons{Int, List}(1, Cons{Int, List}(1, Nil{Int, List}()))
 List{Int64, List}: Cons(1, List{Int64, List}: Cons(1, List{Int64, List}: Nil()))
 ```
 
-On Julia 1.5+, there's an evil trick to have recursive type parameters. Here's a recursive list sum type using that trick (don't use this in serious code. At the very least, it has a problem in github actions, though it works fine locally)
+On Julia 1.5+, there's an evil trick to have mutually recursive types without the 'reduntant' parameter. Here's a recursive list sum type using that trick (don't use this in serious code. At the very least, it has a problem in github actions, though it works fine for me locally)
 
 ```julia 
 julia> @sum_type List{A} begin 
