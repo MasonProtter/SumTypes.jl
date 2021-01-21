@@ -29,3 +29,11 @@ end
 
 @test_throws TypeError Left{Int, String}("hi")
 @test_throws TypeError Right{Int, String}(1)
+
+@sum_type List{A} begin 
+    Nil{A}()
+    Cons{A}(::A, ::List{A}) 
+end
+
+@test Nil{Int}() isa List{Int}
+@test Cons{Int}(1, Cons{Int}(1, Nil{Int}())) isa List{Int}

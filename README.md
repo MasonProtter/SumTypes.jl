@@ -22,10 +22,10 @@ This says that we have a sum type `Either{A, B}`, and it can hold a value that i
 
 ```julia
 julia> Left{Int, Int}(1)
-Either{Int64,Int64}(Left{Int64,Int64}(1))
+Either{Int64, Int64}: Left(1)
 
 julia> Right{Int, Float64}(1.0)
-Either{Int64,Float64}(Right{Int64,Float64}(1.0))
+Either{Int64, Float64}: Right(1.0)
 ```
 
 Note that unlike `Union{A, B}`, `A <: Either{A,B}` is false, and
@@ -41,10 +41,10 @@ julia> @sum_type List{A} begin
        end
 
 julia> Nil{Int}()
-List{Int64}(Nil{Int64}())
+List{Int64}: Nil()
 
 julia> Cons{Int}(1, Cons{Int}(1, Nil{Int}()))
-List{Int64}(Cons{Int64}(1, List{Int64}(Cons{Int64}(1, List{Int64}(Nil{Int64}())))))
+List{Int64}: Cons(1, List{Int64}: Cons(1, List{Int64}: Nil()))
 ```
 
 
@@ -57,13 +57,13 @@ julia> @sum_type Fruit begin
        end
 
 julia> Apple()
-Fruit(Apple())
+Fruit: Apple()
 
 julia> Banana()
-Fruit(Banana())
+Fruit: Banana()
 
 julia> Orange()
-Fruit(Orange())
+Fruit: Orange()
 ```
 
 ## Pattern matching on Sum types

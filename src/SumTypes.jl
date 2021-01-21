@@ -118,17 +118,24 @@ macro sum_type(T, blk::Expr)
             data::Union{$(con_nameparams...)}
             _1() = nothing
         end
+    end
+    #
+    ex = quote
+        $sum_struct_def
         function $Base.show(io::IO, x::$T_name)
             print(io, "$(typeof(x)): ", x.data)
         end
+        $SumTypes.constructors(::Type{<:$T_name}) = ($(con_names...),)
+        $SumTypes.match(f, x::$T_name) = (_x = x.data; $(_unionsplit(con_names, :(f(_x)))))
     end
-    
-    push!(out.args, sum_struct_def)
-    # push!(out.args, :($(@__MODULE__).@as_record $T_name))
-    push!(out.args, :($SumTypes.constructors(::Type{<:$T_name}) = ($(con_names...),)))
-    push!(out.args, :($SumTypes.match(f, x::$T_name) = (_x = x.data; $(_unionsplit(con_names, :(f(_x)))))))
+    push!(out.args, ex)
+    #@show sum_struct_def
+    x = 1
+    pushfirst!(out.args, f(sum_struct_def)) # hack to allow mutually recursive types
     esc(out)
 end
+
+f(x) = :(try $x catch; nothing end) #split out to it's own function to to possible parsinf error?
 
 """
     @case T fdef
@@ -174,6 +181,12 @@ iscomplete(matcher, ::Type{T}) where {T} = all(constructors(T)) do con
     hasmethod(matcher, (con,))
 end
 
+macro foo()
+    ex = quote end
+    x = :(x = 1)
+    pushfirst!(ex.args, :(try $x catch _; end))
+    ex
+end 
 
 
 end # module
