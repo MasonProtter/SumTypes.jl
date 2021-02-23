@@ -104,7 +104,9 @@ macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
             $Base.indexed_iterate(x::$name, i::Int, state=1) = (Base.@_inline_meta; (getfield(x, i), i+1))
             $SumTypes.parent(::Type{<:$name}) = $T_name
             function $Base.show(io::IO, x::$name)
-                print(io, "$($name)(", join(map(repr, [x...]), ", "), ")")
+                print(io, "$($name)(")
+                foreach(i -> show(io, i), x)
+                print(io, ')')
             end 
         end
         push!(out.args, ex)
