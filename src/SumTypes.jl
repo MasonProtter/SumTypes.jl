@@ -96,7 +96,7 @@ macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
             :struct, false, nameparam_constrained, 
             Expr(:block, 
                  field_names_typed..., 
-                 :($nameparam($(field_names...)) where {$(T_params_constrained...)} =
+                 :($nameparam($(field_names_typed...)) where {$(T_params_constrained...)} =
                    $(Expr(:new, T, Expr(:new, nameparam, field_names...))))))
         ex = quote
             $struct_def

@@ -27,8 +27,9 @@ let x = Left{Int, Int}(1)
     @test !(SumTypes.iscomplete(f, Either))
 end
 
-@test_throws TypeError Left{Int, String}("hi")
-@test_throws TypeError Right{Int, String}(1)
+@test_throws MethodError Left{Int, String}("hi")
+@test_throws MethodError Right{Int, String}(1)
+@test_throws MethodError Left{Int, Int}(0x01)
 
 @sum_type List{A, L} begin 
     Nil{A, L}()
