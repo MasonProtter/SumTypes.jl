@@ -58,7 +58,9 @@ macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
         T.args[1], (x -> x isa Expr && x.head == :(<:) ? x.args[1] : x).(T.args[2:end]), T.args[2:end]
     end
     filter!(x -> !(x isa LineNumberNode), blk.args)
-    constructors = map(blk.args) do con::Expr
+    constructors = map(blk.args) do con_
+        @assert isa(con_, Expr) "variants in sum type macro must be typed $(con_)(), not $(con_)"
+        con::Expr = con_
         @assert con.head == :call
         con_name = con.args[1] isa Expr && con.args[1].head == :curly ? con.args[1].args[1] : con.args[1]
         con_params = (con.args[1] isa Expr && con.args[1].head == :curly) ? con.args[1].args[2:end] : []
