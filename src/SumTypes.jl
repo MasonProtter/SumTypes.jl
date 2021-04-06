@@ -104,17 +104,7 @@ macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
             $struct_def
             @inline $Base.iterate(x::$name, s = 1) = s ≤ fieldcount($name) ? (getfield(x, s), s + 1) : nothing
             $Base.indexed_iterate(x::$name, i::Int, state=1) = (Base.@_inline_meta; (getfield(x, i), i+1))
-            $SumTypes.parent(::Type{<:$name}) = $T_name
-            function $Base.show(io::IO, x::$name)
-                print(io, "$(Base.typename($name).name)")
-                isempty(x) && return nothing
-                print(io, '(')
-                for (i, elem) in enumerate(x)
-                    show(io, elem)
-                    i == fieldcount(typeof(x)) || print(io, ", ")
-                end
-                print(io, ')')
-            end 
+            $SumTypes.parent(::Type{<:$name}) = $T_name 
         end
         push!(out.args, ex)
     end
@@ -131,9 +121,6 @@ macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
     #
     ex = quote
         $sum_struct_def
-        function $Base.show(io::IO, x::$T_name)
-            print(io, "$(typeof(x)): ", x.data)
-        end
         $SumTypes.constructors(::Type{<:$T_name}) = ($(con_names...),)
         function $SumTypes.match(f, x::$T) where {$(T_params...)}
             _x = x.data
