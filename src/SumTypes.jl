@@ -1,12 +1,19 @@
 module SumTypes
 
-export @sum_type, @case #@match
+export @sum_type, @cases, Uninit
 
 using MacroTools: MacroTools
 
-function match end
 function parent end
-constructors(::Type{T}) where T = throw(error("$T is not a sum type"))
+function constructors end
+function constructors_Union end
+is_sumtype(::Type{T}) where {T}   = false
+
+struct Unsafe end
+const unsafe = Unsafe()
+
+
+struct Uninit end
 
 """
     @sum_type(T, blk)
@@ -50,7 +57,7 @@ Examples:
     julia> Cons{Int}(1, Cons{Int}(1, Nil{Int}()))
     List{Int64}(Cons{Int64}(1, List{Int64}(Cons{Int64}(1, List{Int64}(Nil{Int64}()))))) 
 """
-macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
+macro sum_type(T, blk::Expr)
     @assert blk isa Expr && blk.head == :block
     T_name, T_params, T_params_constrained = if T isa Symbol
         T, [], []
@@ -64,7 +71,16 @@ macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
         @assert con.head == :call
         con_name = con.args[1] isa Expr && con.args[1].head == :curly ? con.args[1].args[1] : con.args[1]
         con_params = (con.args[1] isa Expr && con.args[1].head == :curly) ? con.args[1].args[2:end] : []
-        @assert con_params == T_params "constructors currently must have same parameters as the sum type. Got $T and $(con.args[1])"
+        #@assert con_params == T_params "constructors currently must have same parameters as the sum type. Got $T and $(con.args[1])"
+        con_params_uninit = let v = copy(con_params)
+            for i ∈ eachindex(T_params)
+                if T_params[i] ∉ con_params
+                    insert!(v, i, Uninit)
+                end
+            end
+            v
+        end
+        con_params_constrained = [T_params_constrained[i] for i ∈ eachindex(con_params_uninit) if con_params_uninit[i] != Uninit]
         con_nameparam = isempty(con_params) ? con_name : :($con_name{$(con_params...)})
         con_field_names = map(enumerate(con.args[2:end])) do (i, field)
             @assert field isa Symbol || (field isa Expr && field.head == :(::)) "malformed constructor field $field"
@@ -86,11 +102,22 @@ macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
                 field.args[2]
             end
         end
-        (name=con_name, params=con_params, nameparam = con_nameparam, field_names=con_field_names, types=con_field_types)
+        (
+            name=con_name,
+            params=con_params,
+            nameparam = con_nameparam,
+            field_names=con_field_names,
+            types=con_field_types,
+            params_uninit=con_params_uninit,
+            params_constrained = con_params_constrained,
+        )
     end
     out = Expr(:toplevel)
-    foreach(constructors) do (name, params, nameparam, field_names, types)
-        nameparam_constrained = isempty(params) ? name : :($name{$(T_params_constrained...)})
+    converts = []
+    foreach(constructors) do (name, params, nameparam, field_names, types, params_uninit, params_constrained)
+        nameparam_constrained = isempty(params) ? name : :($name{$(params_constrained...)})
+        T_uninit = isempty(T_params) ? T_name : :($T_name{$(params_uninit...)})
+        T_init = isempty(T_params) ? T_name : :($T_name{$(T_params...)})
         field_names_typed = map(field_names, types) do name, type
             :($name :: $type)
         end
@@ -98,15 +125,22 @@ macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
             :struct, false, nameparam_constrained, 
             Expr(:block, 
                  field_names_typed..., 
-                 :($nameparam($(field_names_typed...)) where {$(T_params_constrained...)} =
-                   $(Expr(:new, T, Expr(:new, nameparam, field_names...))))))
+                 :($nameparam(::$Unsafe, $(field_names_typed...)) where {$(params_constrained...)} =
+                   $(Expr(:new, T_uninit, Expr(:new, nameparam, field_names...))))))
+        maybe_no_param = if !isempty(params) && types == params
+            :($name($(field_names_typed...)) where {$(params...)} = $nameparam($unsafe, $(field_names...)))
+        end
         ex = quote
             $struct_def
+            $nameparam($(field_names_typed...)) where {$(params_constrained...)} = $nameparam($unsafe, $(field_names...))
+            $maybe_no_param
             @inline $Base.iterate(x::$name, s = 1) = s ≤ fieldcount($name) ? (getfield(x, s), s + 1) : nothing
             $Base.indexed_iterate(x::$name, i::Int, state=1) = (Base.@_inline_meta; (getfield(x, i), i+1))
-            $SumTypes.parent(::Type{<:$name}) = $T_name 
+            $SumTypes.parent(::Type{<:$name}) = $T_name
         end
         push!(out.args, ex)
+        push!(converts, :($Base.convert(::Type{$T_init}, x::$T_uninit) where {$(T_params...)} = $(Expr(:new, T_init, :($getfield(x, :data))))))
+        push!(converts, :($T_init(x::$T_uninit) where {$(T_params...)} = $(Expr(:new, T_init, :($getfield(x, :data))))))
     end
 
     con_nameparams = (x -> x.nameparam).(constructors)
@@ -119,74 +153,82 @@ macro sum_type(T, blk::Expr, recur::Expr=:(recursive=false))
         end
     end
     #
+
     ex = quote
         $sum_struct_def
         $SumTypes.constructors(::Type{<:$T_name}) = ($(con_names...),)
-        function $SumTypes.match(f, x::$T) where {$(T_params...)}
-            _x = x.data
-            $(_unionsplit(con_nameparams, :(f(_x))))
-        end
+        $SumTypes.constructors_Union(::Type{<:$T_name}) = $Union{$(con_names...)}
+        $SumTypes.is_sumtype(::Type{<:$T_name}) = true 
     end
     push!(out.args, ex)
-    MacroTools.@capture(recur, recursive=use_recur_) ||
-        throw("Malformed recur option. Expected `recursive=true` or `recursive=false`")
-    if use_recur
-        pushfirst!(out.args, f(sum_struct_def)) # hack to allow mutually recursive types
-    end
+    push!(out.args, Expr(:block, converts...))
     esc(out)
 end
 
-f(x) = :(try $x catch; nothing end) #split out to it's own function to to possible parsinf error?
 
-"""
-    @case T fdef
-
-Define a pattern matcher `fdef` to deconstruct a `SumType`
-
-Examples:
-
-    @case Either f((x,)::Left)  = x + 1
-    @case Either f((x,)::Right) = x - 1
-
-Calling `f` on an `Either` type will use manually unrolled dispatch, rather than julia's automatic dynamic dispatch machinery.That is, it'll emit code that is just a series of if/else calls.
-"""
-macro case(T, fdef)
-    d = MacroTools.splitdef(fdef)
-    f = esc(d[:name])
-    T = esc(T)
+macro cases(to_match, block)
+    @assert block.head == :block
+    lnns = filter(block.args) do arg
+        arg isa LineNumberNode
+    end
+    Base.remove_linenums!(block)
+    while length(lnns) < length(block.args)
+        push!(lnns, nothing)
+    end
+    stmts = map(block.args) do arg::Expr
+        arg.head == :call && arg.args[1] == :(=>) || throw(error("Malformed case $arg"))
+        lhs = arg.args[2]
+        rhs = arg.args[3]
+        if arg.args[2] isa Expr && arg.args[2].head == :call
+            variant = arg.args[2].args[1]
+            fieldnames = arg.args[2].args[2:end]
+            iscall = true
+        else
+            variant = arg.args[2]
+            fieldnames = []
+            iscall = false
+        end
+        if !(variant isa Symbol)
+            error("Invalid variant $variant")
+        end
+        (;variant, rhs, fieldnames, iscall)
+    end
+    @gensym data
+    @gensym _to_match
+    @gensym con
+    @gensym con_Union
+    variants = map(x -> x.variant, stmts)
+    ex = :(if $data isa $(stmts[1].variant);
+           $(stmts[1].iscall ? :(($(stmts[1].fieldnames...),) = $data) : nothing);
+           $(stmts[1].rhs)
+           end)
+    Base.remove_linenums!(ex)
+    pushfirst!(ex.args[2].args, lnns[1])
+    to_push = ex.args
+    for i ∈ 2:length(stmts)
+        _if = :(if $data isa $(stmts[i].variant);
+                $(stmts[i].iscall ? :(($(stmts[i].fieldnames...),) = $data) : nothing);
+                $(stmts[i].rhs)
+                end)
+        _if.head = :elseif
+        Base.remove_linenums!(_if)
+        pushfirst!(_if.args[2].args, lnns[i])
+        
+        push!(to_push, _if)
+        to_push = to_push[3].args
+    end
+    push!(to_push, :(error("Something went wrong during matching")))
     quote
-        $f(x::$T)= $SumTypes.match($f, x)
-        $(:($fdef) |> esc)
-    end
+        let $_to_match = $to_match
+            $Union{$(variants...)} == $constructors_Union($typeof($_to_match)) ||
+                $throw($error(
+                    "Inexhaustic @cases specification. Got cases $($Union{$(variants...)}), expected $($constructors_Union($typeof($_to_match)))"))
+            $is_sumtype($typeof($_to_match)) || $throw($error("$_to_match is not a SumType"))
+            # $constructors_match($_to_match, $(variants...)) || $throw($error("Inexhaustic @cases specification"))
+            $data = $getfield($_to_match, :data)
+            $ex
+        end
+    end |> esc
 end
-
-function _unionsplit(thetypes, call)
-    MacroTools.@capture(call, f_(arg_))
-    first_type, rest_types = Iterators.peel(thetypes)
-    code = :(if $arg isa $first_type; $call end)
-    the_args = code.args
-    for next_type in rest_types
-        clause = :(if $arg isa $next_type # use `if` so this parses, then change to `elseif`
-                   $call
-                   end)
-        clause.head = :elseif
-        push!(the_args, clause)
-        the_args = clause.args
-    end
-    push!(the_args, :(@assert false))
-    return code
-end
-
-iscomplete(matcher, ::Type{T}) where {T} = all(constructors(T)) do con
-    hasmethod(matcher, (con,))
-end
-
-macro foo()
-    ex = quote end
-    x = :(x = 1)
-    pushfirst!(ex.args, :(try $x catch _; end))
-    ex
-end 
-
 
 end # module

@@ -10,31 +10,44 @@ end
 
 
 @sum_type Either{A, B} begin
-    Left{A, B}(::A)
-    Right{A, B}(::B)
+    Left{A}(::A)
+    Right{B}(::B)
 end
 
-let x = Right{Int, Int}(1)
-    @case Either f((x,)::Left)  = x + 1
-    @case Either f((x,)::Right) = x - 1
-    @test f(x) == 0
-    @test SumTypes.iscomplete(f, Either)
+let x::Either{Int, Int} = Right(1)
+    @test 0 == @cases x begin
+        Left(l)  => l + 1
+        Right(r) => r - 1
+    end 
 end
 
-let x = Left{Int, Int}(1)
-    @case Either f((x,)::Left)  = x + 1
-    @test f(x) == 2
-    @test !(SumTypes.iscomplete(f, Either))
+let x::Either{Int, Int} = Left(1)
+    @test_throws ErrorException @cases x begin
+        Left(l) => l + 1
+    end
 end
 
-@test_throws MethodError Left{Int, String}("hi")
-@test_throws MethodError Right{Int, String}(1)
-@test_throws MethodError Left{Int, Int}(0x01)
+@test_throws MethodError Left{Int}("hi")
+@test_throws MethodError Right{String}(1)
+@test_throws MethodError Left{Int}(0x01)
 
 @sum_type List{A, L} begin 
-    Nil{A, L}()
+    Nil()
     Cons{A, L}(::A, ::L) 
 end
+List(first, rest...) = Cons(first, List(rest...))
+List() = Nil()
 
-@test Nil{Int, List}() isa List{Int, List}
-@test Cons{Int, List}(1, Cons{Int, List}(1, Nil{Int, List}())) isa List{Int, List}
+function Base.Tuple(l::List)
+    @cases l begin
+        Nil() => ()
+        Cons(a, b) => (a, Tuple(b)...)
+    end 
+end 
+
+function Base.show(io::IO, l::List)
+    print(io, "List", Tuple(l))
+end
+
+@test Nil() isa List{Uninit, Uninit}
+@test Cons(1, Cons(1, Nil())) isa List{Int, List{Int, List{Uninit, Uninit}}}
