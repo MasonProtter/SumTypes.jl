@@ -4,7 +4,7 @@ A julian implementation of sum types. Sum types, sometimes called 'tagged unions
 of the [disjoint union](https://en.wikipedia.org/wiki/Disjoint_union) operation (which is *not* a union in the 
 traditional sense). From a category theory perspective, sum types are interesting because they are *dual* to 
 `Tuple`s (whatever that means). In the 
-[Rust programming language](https://doc.rust-lang.org/book/ch06-00-enums.html), these are called `Enums`.
+[Rust programming language](https://doc.rust-lang.org/book/ch06-00-enums.html), these are called "Enums".
 
 At the end of the day, a sum type is really just a fancy word for a container that can store data of a few 
 different, pre-declared types and is labelled by how it was instantiated.
