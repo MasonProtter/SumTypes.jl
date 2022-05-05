@@ -191,7 +191,7 @@ macro cases(to_match, block)
         if !(variant isa Symbol)
             error("Invalid variant $variant")
         end
-        (;variant, rhs, fieldnames, iscall)
+        (;variant=variant, rhs=rhs, fieldnames=fieldnames, iscall=iscall)
     end
     @gensym data
     @gensym _to_match
