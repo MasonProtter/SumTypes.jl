@@ -15,48 +15,6 @@ const unsafe = Unsafe()
 
 struct Uninit end
 
-"""
-    @sum_type(T, blk)
-
-Create a sum type `T` with constructors in the codeblock `blk`. 
-
-Examples:
-*) An unparameterized sum type `Foo` with constructors `Bar` and `Baz`
-
-    @sum_type Foo begin
-        Bar(::Int)
-        Baz(::Float64)
-    end
-
-    julia> Bar(1)
-    Foo(Bar(1))
-
-*) 'The' `Either` sum type with constructors `Left` and `Right`
-
-    @sum_type Either{A, B} begin
-        Left{A, B}(::A)
-        Right{A, B}(::B)
-    end
-
-    julia> Left{Int, Int}(1)
-    Either{Int64,Int64}(Left{Int64,Int64}(1))
-
-    julia> Right{Int, Float64}(1.0)
-    Either{Int64,Float64}(Right{Int64,Float64}(1.0))
-
-*) A recursive `List` sum type with constructors `Nil` and `Cons`
-
-    @sum_type List{A} begin
-        Nil{A}()
-        Cons{A}(::A, ::List{A})
-    end
-
-    julia> Nil{Int}()
-    List{Int64}(Nil{Int64}())
-
-    julia> Cons{Int}(1, Cons{Int}(1, Nil{Int}()))
-    List{Int64}(Cons{Int64}(1, List{Int64}(Cons{Int64}(1, List{Int64}(Nil{Int64}()))))) 
-"""
 macro sum_type(T, blk::Expr)
     @assert blk isa Expr && blk.head == :block
     T_name, T_params, T_params_constrained = if T isa Symbol
