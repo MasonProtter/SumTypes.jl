@@ -124,7 +124,7 @@ julia> @cases myfruit begin
            Apple() => "Got an apple!"
            Orange() => "Got an orange!"
        end
-ERROR: Inexhaustic @cases specification. Got cases Union{Apple, Orange}, expected Union{Apple, Banana, Orange}
+ERROR: Inexhaustive @cases specification. Got cases Union{Apple, Orange}, expected Union{Apple, Banana, Orange}
 [...]
 ```
 

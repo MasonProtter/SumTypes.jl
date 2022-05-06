@@ -180,7 +180,7 @@ macro cases(to_match, block)
         let $_to_match = $to_match
             $Union{$(variants...)} == $constructors_Union($typeof($_to_match)) ||
                 $throw($error(
-                    "Inexhaustic @cases specification. Got cases $($Union{$(variants...)}), expected $($constructors_Union($typeof($_to_match)))"))
+                    "Inexhaustive @cases specification. Got cases $($Union{$(variants...)}), expected $($constructors_Union($typeof($_to_match)))"))
             $is_sumtype($typeof($_to_match)) || $throw($error("$_to_match is not a SumType"))
             # $constructors_match($_to_match, $(variants...)) || $throw($error("Inexhaustic @cases specification"))
             $data = $getfield($_to_match, :data)
