@@ -148,6 +148,7 @@ In the same way as [Unityper.jl](https://github.com/YingboMa/Unityper.jl) is abl
 ### Branching on abstractly typed data
 <details>
 <summary>Benchmark code</summary>
+
 ``` julia
 module AbstractTypeTest
 
@@ -191,7 +192,9 @@ display(@benchmark foo!($xs);)
 
 end
 ```
+
 </details>
+
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
  Range (min … max):  393.061 μs …   6.725 ms  ┊ GC (min … max): 0.00% … 90.92%
@@ -206,8 +209,10 @@ BenchmarkTools.Trial: 10000 samples with 1 evaluation.
 ```
 
 SumTypes.jl
+
 <details>
 <summary>Benchmark code</summary>
+
 ``` julia
 module SumTypeTest
 
@@ -238,7 +243,9 @@ display(@benchmark foo!($xs);)
 
 end 
 ```
+
 </details>
+
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
  Range (min … max):  83.951 μs … 262.854 μs  ┊ GC (min … max): 0.00% … 0.00%
@@ -253,6 +260,7 @@ BenchmarkTools.Trial: 10000 samples with 1 evaluation.
 ```
 
 And Unityper.jl:
+
 <details>
 <summary>Benchmark code</summary>
 
@@ -300,7 +308,9 @@ display(@benchmark foo!($xs);)
 
 end
 ```
+
 </details>
+
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
  Range (min … max):  69.355 μs … 234.343 μs  ┊ GC (min … max): 0.00% … 0.00%
