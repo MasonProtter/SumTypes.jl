@@ -13,7 +13,7 @@ Users of statically typed programming languages often prefer Sum types to unions
 easier. In a dynamic language like julia, the benefit of these objects is less obvious, but there are cases where
 they're helpful.
 
-A common use-case for sum types is as a richer version of eums (enum in the 
+A common use-case for sum types is as a richer version of enums (enum in the 
 [julia sense](https://docs.julialang.org/en/v1/base/base/#Base.Enums.@enum), not in the Rust sense):
 ```julia
 julia> @sum_type Fruit begin
