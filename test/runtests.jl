@@ -44,7 +44,6 @@ end
         let x::Either{Int, Int} = x
             @cases x begin
                 Left(l) => l + 1
-                Right(r) => r - 1
             end
         end
     end
@@ -90,7 +89,7 @@ end
 
 
 # #CI Doesn't like this test so just uncomment it for local testing
-if !haskey(ENV, "CI") && ENV["CI"] != "true"
+if !haskey(ENV, "CI") || ENV["CI"] != "true"
     @testset "Allocation-free @cases" begin
         xs = map(x->rand((A(), B(), C(), D())), 1:10000);
         foo!(xs)
