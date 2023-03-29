@@ -1,7 +1,7 @@
 # SumTypes.jl
 
 - [Basics](https://github.com/MasonProtter/SumTypes.jl#basics)
-- [Pattern matching](https://github.com/MasonProtter/SumTypes.jl#pattern-matching-on-sum-types)
+- [Destructuring sum types](https://github.com/MasonProtter/SumTypes.jl#destructuring-sum-types)
 - [Avoiding namespace clutter](https://github.com/MasonProtter/SumTypes.jl#avoiding-namespace-clutter)
 - [Performance](https://github.com/MasonProtter/SumTypes.jl#performance)
 - [Custom printing](https://github.com/MasonProtter/SumTypes.jl#custom-printing)
@@ -107,11 +107,11 @@ Note that unlike `Union{A, B}`, `A <: Either{A,B}` is false, and `Either{A, A}` 
 <!-- </details> -->
 
 
-## Pattern matching on Sum types
+## Destructuring Sum types
 <!-- <details> -->
 <!-- <summary>Click to expand</summary> -->
 
-Okay, but how do I actually access the data enclosed in a `Fruit` or an `Either`? The answer is pattern matching. 
+Okay, but how do I actually access the data enclosed in a `Fruit` or an `Either`? The answer is destructuring. 
 SumTypes.jl exposes a `@cases` macro for efficiently unwrapping and branching on the contents of a sum type:
 
 ```julia
@@ -133,7 +133,7 @@ julia> @cases Banana begin
 ERROR: I'm allergic to bananas!
 [...]
 ``` 
-`@cases` can automatically detect if you did't give an exhaustive set of cases (with no runtime penalty) and throw an error.
+`@cases` can automatically detect if you didn't give an exhaustive set of cases (with no runtime penalty) and throw an error.
 ```julia
 julia> @cases myfruit begin
            Apple => "Got an apple!"
@@ -156,6 +156,8 @@ julia> let x::Either{Int, Float64} = rand(Bool) ? Left(1) : Right(2.0)
 i.e. in this example, `@cases` took in an `Either{Int,Float64}` and if it contained a `Left`, it took the wrapped data (an `Int`) 
 bound it do the variable `l` and added `1.0` to `l`, whereas if it was a `Right`, it took the `Float64` and bound it to a variable 
 `r` and subtracted `1` from `r`.
+
+The `@cases` macro still falls far short of a full on pattern matching system, lacking many features. For anything advanced, I'd recommend using `@match` from [MLStyle.jl](https://github.com/thautwarm/MLStyle.jl).
 
 <!-- </details> -->
 
