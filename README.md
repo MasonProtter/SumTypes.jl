@@ -3,7 +3,7 @@
 ## Basics
 
 <details>
-<summary>Benchmark code</summary>
+<summary>Click to expand</summary>
 
 A julian implementation of sum types. Sum types, sometimes called 'tagged unions' are the type system equivalent 
 of the [disjoint union](https://en.wikipedia.org/wiki/Disjoint_union) operation (which is *not* a union in the 
@@ -156,7 +156,7 @@ bound it do the variable `l` and added `1.0` to `l`, whereas if it was a `Right`
 ## Avoiding namespace clutter
 
 <details>
-<summary>Benchmark code</summary>
+<summary>Click to expand</summary>
 
 A common complaint about Enums and Sum Types is that sometimes they can contribute to clutter in the namespace. If you want to avoid having all the variants being available as top-level constant variables, then you can use the `hide_variants=true` option:
 
