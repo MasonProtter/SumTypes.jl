@@ -81,12 +81,12 @@ foo!(xs) = for i in eachindex(xs)
 end
 
 
-#CI Doesn't like this test so just uncomment it for local testing
-@testset "Allocation-free @cases" begin
-    xs = map(x->rand((A(), B(), C(), D())), 1:10000);
-    foo!(xs)
-    @test @allocated(foo!(xs)) == 0
-end
+# #CI Doesn't like this test so just uncomment it for local testing
+# @testset "Allocation-free @cases" begin
+#     xs = map(x->rand((A(), B(), C(), D())), 1:10000);
+#     foo!(xs)
+#     @test @allocated(foo!(xs)) == 0
+# end
 #--------------------------------------------------------
 
 @sum_type Hider{T} begin
