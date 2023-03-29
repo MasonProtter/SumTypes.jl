@@ -96,7 +96,7 @@ end hide_variants = true
 
 @sum_type Hider2 begin
     A
-    B(::Int)
+    B
 end hide_variants = true
 
 @testset "hidden variants" begin
@@ -115,7 +115,7 @@ end hide_variants = true
     end
 
     @test Hider2'.A isa Hider2
-    @test Hider2'.A isa Hider2
+    @test Hider2'.B isa Hider2
     @test Hider2'.A != A
     @test Hider2'.B != B
 
@@ -123,8 +123,8 @@ end hide_variants = true
         A => 1
         B(a) => a
     end
-    @test 2 == @cases Hider2'.B(2) begin
+    @test 2 == @cases Hider2'.B begin
         A => 1
-        B(a) => a
+        B => 2
     end
 end

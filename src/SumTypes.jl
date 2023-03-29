@@ -190,9 +190,9 @@ macro sum_type(T, blk::Expr, _hide_variants=:(hide_variants = false))
                                                                                                                               _,
                                                                                                                               gname,
                                                                                                                               gnameparam)
-            data = map(constructors) do (_name, )
-                
-                _name == name ? :($getfield(x, $(QuoteNode(name))) :: $gnameparam) : nothing
+            data =  map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
+                default = singleton ? :($_gnameparam()) : nothing
+                _name == name ? :($getfield(x, $(QuoteNode(name))) :: $gnameparam) : default
             end
             :(tag === $(QuoteNode(name))), Expr(:new, T_init, data..., :tag)
         end
