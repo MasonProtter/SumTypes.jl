@@ -135,8 +135,8 @@ ERROR: I'm allergic to bananas!
 `@cases` can automatically detect if you did't give an exhaustive set of cases (with no runtime penalty) and throw an error.
 ```julia
 julia> @cases myfruit begin
-           Apple() => "Got an apple!"
-           Orange() => "Got an orange!"
+           Apple => "Got an apple!"
+           Orange => "Got an orange!"
        end
 ERROR: Inexhaustive @cases specification. Got cases (:Apple, :Orange), expected (:Apple, :Banana, :Orange)
 [...]
