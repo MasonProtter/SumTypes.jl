@@ -1,5 +1,10 @@
 # SumTypes.jl
 
+## Basics
+
+<details>
+<summary>Benchmark code</summary>
+
 A julian implementation of sum types. Sum types, sometimes called 'tagged unions' are the type system equivalent 
 of the [disjoint union](https://en.wikipedia.org/wiki/Disjoint_union) operation (which is *not* a union in the 
 traditional sense). From a category theory perspective, sum types are interesting because they are *dual* to 
@@ -93,9 +98,14 @@ true
 ```
 Note that unlike `Union{A, B}`, `A <: Either{A,B}` is false, and `Either{A, A}` is distinct from `A`.
 
-## Pattern matching on Sum types
+</details>
 
-Okay, that's nice but how do I actually access the data enclosed in a `Fruit` or an `Either`? The answer is pattern matching. 
+
+## Pattern matching on Sum types
+<details>
+<summary>Click to expand</summary>
+
+Okay, but how do I actually access the data enclosed in a `Fruit` or an `Either`? The answer is pattern matching. 
 SumTypes.jl exposes a `@cases` macro for efficiently unwrapping and branching on the contents of a sum type:
 
 ```julia
@@ -140,6 +150,57 @@ julia> let x::Either{Int, Float64} = rand(Bool) ? Left(1) : Right(2.0)
 i.e. in this example, `@cases` took in an `Either{Int,Float64}` and if it contained a `Left`, it took the wrapped data (an `Int`) 
 bound it do the variable `l` and added `1.0` to `l`, whereas if it was a `Right`, it took the `Float64` and bound it to a variable 
 `r` and subtracted `1` from `r`.
+
+</details>
+
+## Avoiding namespace clutter
+
+<details>
+<summary>Benchmark code</summary>
+
+A common complaint about Enums and Sum Types is that sometimes they can contribute to clutter in the namespace. If you want to avoid having all the variants being available as top-level constant variables, then you can use the `hide_variants=true` option:
+
+``` julia
+julia> @sum_type Foo{T} begin
+           A
+           B{T}(::T)
+       end hide_variants=true
+
+julia> A
+ERROR: UndefVarError: A not defined
+
+julia> B
+ERROR: UndefVarError: B not defined
+```
+These 'hidden' variants can be accessed by applying the `'` operator to the type `Foo`, which returns a named tuple of the variants:
+
+``` julia
+julia> Foo'
+(A = A::Foo{Uninit}, B = var"#Foo#B")
+```
+And then you can access this named tuple as normal:
+``` julia
+
+julia> Foo'.A
+A::Foo{Uninit}
+
+julia> Foo'.B(1)
+B(1)::Foo{Int64}
+```
+
+You can even do fancy things like
+
+``` julia
+julia> let (; B) = Foo'
+           B(1)
+       end
+B(1)::Foo{Int64}
+```
+Note that property-destructuring syntax is only available on julia version 1.7 and higher https://github.com/JuliaLang/julia/issues/39285
+
+
+</details>
+
 
 ## Performance
 
@@ -224,21 +285,21 @@ using SumTypes,  BenchmarkTools
     D(common_field::Int, b::Any)
 end
 
-a(;common=1, a=true, b=10) = A(common, a, b) 
-b(;common=1, a=1, b=1.0, d=1 + 1.0im) = B(common, a, b, d)
-c(;common=1, b=2.0, d=false, e=3.0, k=Complex{Real}(1 + 2im)) = C(common, b, d, e, k)
-d(;common=1, b=:hi) = D(common, b)
+A(;common_field=1, a=true, b=10) = A(common_field, a, b) 
+B(;common_field=1, a=1, b=1.0, d=1 + 1.0im) = B(common_field, a, b, d)
+C(;common_field=1, b=2.0, d=false, e=3.0, k=Complex{Real}(1 + 2im)) = C(common_field, b, d, e, k)
+D(;common_field=1, b=:hi) = D(common_field, b)
 
 foo!(xs) = for i in eachindex(xs)
     xs[i] = @cases xs[i] begin
-        A => b()
-        B => c()
-        C => d()
-        D => a()
+        A => B()
+        B => C()
+        C => D()
+        D => A()
     end
 end
 
-xs = rand((a(), b(), c(), d()), 10000);
+xs = rand((A(), B(), C(), D()), 10000);
 display(@benchmark foo!($xs);)
 
 end 
@@ -248,13 +309,13 @@ end
 
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  83.951 μs … 262.854 μs  ┊ GC (min … max): 0.00% … 0.00%
- Time  (median):     86.286 μs               ┊ GC (median):    0.00%
- Time  (mean ± σ):   89.819 μs ±  12.281 μs  ┊ GC (mean ± σ):  0.00% ± 0.00%
+ Range (min … max):  74.210 μs … 231.032 μs  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     75.119 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   79.962 μs ±  13.458 μs  ┊ GC (mean ± σ):  0.00% ± 0.00%
 
-  ▆█▆▆▃▂▄▃▄▁                                                   ▁
-  ██████████▆▅▆▇▇▅▇▇▇▆▅▇▆▃▇▆▇▆▅▇▆▅▅▇▅▅▅▄▄▄▅▄▄▄▅▅▄▄▅▄▄▃▃▄▄▄▄▅▄▅ █
-  84 μs         Histogram: log(frequency) by time       157 μs <
+  █▃  ▄▂▄  ▄▃   ▂▁                                             ▁
+  ███▆████▅███▇▇████▆█▅▇▅▇▇▆▇▆▅▅▅▆▅▅▅▅▅▅▅▆▅▅▅▆▅▅▅▅▅▁▅▅▅▅▅▄▄▅▅▅ █
+  74.2 μs       Histogram: log(frequency) by time       152 μs <
 
  Memory estimate: 0 bytes, allocs estimate: 0.
 ```
@@ -324,9 +385,12 @@ BenchmarkTools.Trial: 10000 samples with 1 evaluation.
  Memory estimate: 0 bytes, allocs estimate: 0.
 ```
 
-We can see that Unityper.jl is able to beat SumTypes.jl in this benchmark, but it's fairly close. 
-
-In exchange for this modest performance loss, SumTypes.jl has some advantages relative to Unityper.jl too, such as 
+Unityper.jl and SumTypes.jl are about equal in this benchmark. SumTypes.jl has some advantages relative to Unityper.jl too, such as:
 - SumTypes.jl allows [parametric types](https://docs.julialang.org/en/v1/manual/types/#Parametric-Types) for much greater container flexibility (Unityper does some memory layout optimizations that won't work with parametric types). 
 - SumTypes.jl does not require default values for every field of the struct
 - SumTypes.jl's `@cases` macro is more powerful and flexible than Unityper's `@compactified`.
+- SumTypes.jl allows you to hide its variants from the namespace (opt in).
+
+Whereas some advantages of Unityper.jl are:
+- A `@compactified` type from Unityper.jl will often have a smaller memory footprint than a corresponding type from SumTypes.jl
+- If we had used `D(;common_field=1, b="hi")` in our benchmarks, SumTypes.jl could have incurred an allocation whereas Unitypeper.jl would not. This allocation is due to the compiler heuristics involved in `::Union{T, Nothing}` fields of structs and may be fixed in future versions of julia.

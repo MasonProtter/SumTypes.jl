@@ -58,7 +58,7 @@ end
     @test Tuple(List(1, 2, 3, 4, 5)) == (1, 2, 3, 4, 5)
 end
 
-
+#--------------------------------------------------------
 @sum_type AT begin
     A(common_field::Int, a::Bool, b::Int)
     B(common_field::Int, a::Int, b::Float64, d::Complex)
@@ -81,9 +81,50 @@ foo!(xs) = for i in eachindex(xs)
 end
 
 
-# CI Doesn't like this test so just uncomment it for local testing
-# @testset "Allocation-free @cases" begin
-#     xs = map(x->rand((A(), B(), C(), D())), 1:10000);
-#     foo!(xs)
-#     @test @allocated(foo!(xs)) == 0
-# end
+#CI Doesn't like this test so just uncomment it for local testing
+@testset "Allocation-free @cases" begin
+    xs = map(x->rand((A(), B(), C(), D())), 1:10000);
+    foo!(xs)
+    @test @allocated(foo!(xs)) == 0
+end
+#--------------------------------------------------------
+
+@sum_type Hider{T} begin
+    A
+    B{T}(::T)
+end hide_variants = true
+
+@sum_type Hider2 begin
+    A
+    B(::Int)
+end hide_variants = true
+
+@testset "hidden variants" begin
+    @test Hider{Int}'.A isa Hider{Int}
+    @test Hider'.A isa Hider{SumTypes.Uninit}
+    @test Hider'.A != A
+    @test Hider'.B != B
+
+    @test 1 == @cases Hider'.A begin
+        A => 1
+        B(a) => a
+    end
+    @test 2 == @cases Hider'.B(2) begin
+        A => 1
+        B(a) => a
+    end
+
+    @test Hider2'.A isa Hider2
+    @test Hider2'.A isa Hider2
+    @test Hider2'.A != A
+    @test Hider2'.B != B
+
+    @test 1 == @cases Hider2'.A begin
+        A => 1
+        B(a) => a
+    end
+    @test 2 == @cases Hider2'.B(2) begin
+        A => 1
+        B(a) => a
+    end
+end
