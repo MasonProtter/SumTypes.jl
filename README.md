@@ -3,8 +3,9 @@
 - [Basics](https://github.com/MasonProtter/SumTypes.jl#basics)
 - [Destructuring sum types](https://github.com/MasonProtter/SumTypes.jl#destructuring-sum-types)
 - [Avoiding namespace clutter](https://github.com/MasonProtter/SumTypes.jl#avoiding-namespace-clutter)
-- [Performance](https://github.com/MasonProtter/SumTypes.jl#performance)
 - [Custom printing](https://github.com/MasonProtter/SumTypes.jl#custom-printing)
+- [Performance](https://github.com/MasonProtter/SumTypes.jl#performance)
+
 
 ## Basics
 
@@ -163,8 +164,8 @@ The `@cases` macro still falls far short of a full on pattern matching system, l
 
 ## Avoiding namespace clutter
 
-<!-- <details> -->
-<!-- <summary>Click to expand</summary> -->
+<details>
+<summary>Click to expand</summary>
 
 A common complaint about Enums and Sum Types is that sometimes they can contribute to clutter in the namespace. If you want to avoid having all the variants being available as top-level constant variables, then you can use the `hide_variants=true` option:
 
@@ -206,9 +207,48 @@ B(1)::Foo{Int64}
 ```
 Note that property-destructuring syntax is only available on julia version 1.7 and higher https://github.com/JuliaLang/julia/issues/39285
 
+</details>
 
-<!-- </details> -->
 
+## Custom printing
+
+<details>
+<summary>Click to expand</summary>
+
+SumTypes.jl automatically overloads `Base.show(::IO, ::YourType)` and `Base.show(::IO, ::MIME"text/plain", ::YourType)` 
+for your type when you create a sum type, but it forwards that call to an internal function `SumTypes.show_sumtype`. If 
+you wish to customize the printing of a sum type, then you should overload `SumTypes.show_sumtype`:
+``` julia
+julia> @sum_type Fruit2 begin
+           apple
+           orange
+           banana
+       end;
+
+julia> apple
+apple::Fruit2
+
+julia> SumTypes.show_sumtype(io::IO, x::Fruit2) = @cases x begin
+           apple => print(io, "apple")
+           orange => print(io, "orange")
+           banana => print(io, "banana")
+       end
+
+julia> apple
+apple
+
+julia> SumTypes.show_sumtype(io::IO, ::MIME"text/plain", x::Fruit2) = @cases x begin
+           apple => print(io, "apple!")
+           orange => print(io, "orange!")
+           banana => print(io, "banana!")
+       end
+
+julia> apple
+apple!
+```
+If you overload `Base.show` directly inside a package, you might get annoying method deletion warnings during pre-compilation.
+
+</details>
 
 ## Performance
 
@@ -402,39 +442,4 @@ Unityper.jl and SumTypes.jl are about equal in this benchmark. SumTypes.jl has s
 Whereas some advantages of Unityper.jl are:
 - A `@compactified` type from Unityper.jl will often have a smaller memory footprint than a corresponding type from SumTypes.jl
 - If we had used `D(;common_field=1, b="hi")` in our benchmarks, SumTypes.jl could have incurred an allocation whereas Unitypeper.jl would not. This allocation is due to the compiler heuristics involved in `::Union{T, Nothing}` fields of structs and may be fixed in future versions of julia.
-
-## Custom printing
-
-SumTypes.jl automatically overloads `Base.show(::IO, ::YourType)` and `Base.show(::IO, ::MIME"text/plain", ::YourType)` 
-for your type when you create a sum type, but it forwards that call to an internal function `SumTypes.show_sumtype`. If 
-you wish to customize the printing of a sum type, then you should overload `SumTypes.show_sumtype`:
-``` julia
-julia> @sum_type Fruit2 begin
-           apple
-           orange
-           banana
-       end;
-
-julia> apple
-apple::Fruit2
-
-julia> SumTypes.show_sumtype(io::IO, x::Fruit2) = @cases x begin
-           apple => print(io, "apple")
-           orange => print(io, "orange")
-           banana => print(io, "banana")
-       end
-
-julia> apple
-apple
-
-julia> SumTypes.show_sumtype(io::IO, ::MIME"text/plain", x::Fruit2) = @cases x begin
-           apple => print(io, "apple!")
-           orange => print(io, "orange!")
-           banana => print(io, "banana!")
-       end
-
-julia> apple
-apple!
-```
-If you overload `Base.show` directly inside a package, you might get annoying method deletion warnings during pre-compilation.
 
