@@ -145,8 +145,8 @@ SumTypes.show_sumtype(io::IO, ::MIME"text/plain", x::Either2) = @cases x begin
 end
 
 @testset "printing  " begin
-    @test repr(Left(1)) == "Left(1)::Either{Int64, Uninit}"
-    @test repr("text/plain", Right(3)) == "Right(3)::Either{Uninit, Int64}"
+    @test repr(Left(1)) ∈  ("Left(1)::Either{Int64, Uninit}", "Left(1)::Either{Int64,Uninit}") 
+    @test repr("text/plain", Right(3)) ∈ ("Right(3)::Either{Uninit, Int64}", "Right(3)::Either{Uninit,Int64}")
 
     let Left = Either2'.Left, Right = Either2'.Right
         @test repr("text/plain", Left(1)) == "The Leftestmost Value: 1"
