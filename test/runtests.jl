@@ -31,19 +31,27 @@ end
 @testset "Basics  " begin
     @test Bar(1) isa Foo
     @test_throws MethodError Foo(1)
-    
-    let x::Either{Int, Int} = Right(1)
-        @test 0 == @cases x begin
-            Left(l)  => l + 1
-            Right(r) => r - 1
-        end 
-    end
 
-    let x::Either{Int, Int} = Left(1)
-        @test_throws ErrorException @cases x begin
-            Left(l) => l + 1
+    function either_test(x::Either)
+        let x::Either{Int, Int} = x
+            @cases x begin
+                Left(l) => l + 1
+                Right(r) => r - 1
+            end
         end
     end
+    function either_test_incomp(x::Either)
+        let x::Either{Int, Int} = x
+            @cases x begin
+                Left(l) => l + 1
+                Right(r) => r - 1
+            end
+        end
+    end
+    @test either_test(Left(1)) == 2
+    @test either_test(Right(1)) == 0
+    @test_throws ErrorException either_test_incomp(Left(1))
+
     let x = Left([1]), y = Left([1.0]), z = Right([1])
         @test x == y
         @test x != z
@@ -82,11 +90,14 @@ end
 
 
 # #CI Doesn't like this test so just uncomment it for local testing
-# @testset "Allocation-free @cases" begin
-#     xs = map(x->rand((A(), B(), C(), D())), 1:10000);
-#     foo!(xs)
-#     @test @allocated(foo!(xs)) == 0
-# end
+if !haskey(ENV, "CI") && ENV["CI"] != "true"
+    @testset "Allocation-free @cases" begin
+        xs = map(x->rand((A(), B(), C(), D())), 1:10000);
+        foo!(xs)
+        @test @allocated(foo!(xs)) == 0
+    end
+end
+
 #--------------------------------------------------------
 
 @sum_type Hider{T} begin
