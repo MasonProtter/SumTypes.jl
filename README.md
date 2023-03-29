@@ -409,6 +409,15 @@ SumTypes.jl automatically overloads `Base.show(::IO, ::YourType)` and `Base.show
 for your type when you create a sum type, but it forwards that call to an internal function `SumTypes.show_sumtype`. If 
 you wish to customize the printing of a sum type, then you should overload `SumTypes.show_sumtype`:
 ``` julia
+julia> @sum_type Fruit2 begin
+           apple
+           orange
+           banana
+       end;
+
+julia> apple
+apple::Fruit2
+
 julia> SumTypes.show_sumtype(io::IO, x::Fruit2) = @cases x begin
            apple => print(io, "apple")
            orange => print(io, "orange")
