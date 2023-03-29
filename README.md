@@ -1,9 +1,14 @@
 # SumTypes.jl
 
+- [Basics](https://github.com/MasonProtter/SumTypes.jl#basics)
+- [Pattern matching](https://github.com/MasonProtter/SumTypes.jl#pattern-matching-on-sum-types)
+- [Avoiding namespace clutter](https://github.com/MasonProtter/SumTypes.jl#avoiding-namespace-clutter)
+- [Performance](https://github.com/MasonProtter/SumTypes.jl#performance)
+
 ## Basics
 
-<details>
-<summary>Click to expand</summary>
+<!-- <details> -->
+<!-- <summary>Click to expand</summary> -->
 
 A julian implementation of sum types. Sum types, sometimes called 'tagged unions' are the type system equivalent 
 of the [disjoint union](https://en.wikipedia.org/wiki/Disjoint_union) operation (which is *not* a union in the 
@@ -98,12 +103,12 @@ true
 ```
 Note that unlike `Union{A, B}`, `A <: Either{A,B}` is false, and `Either{A, A}` is distinct from `A`.
 
-</details>
+<!-- </details> -->
 
 
 ## Pattern matching on Sum types
-<details>
-<summary>Click to expand</summary>
+<!-- <details> -->
+<!-- <summary>Click to expand</summary> -->
 
 Okay, but how do I actually access the data enclosed in a `Fruit` or an `Either`? The answer is pattern matching. 
 SumTypes.jl exposes a `@cases` macro for efficiently unwrapping and branching on the contents of a sum type:
@@ -151,12 +156,12 @@ i.e. in this example, `@cases` took in an `Either{Int,Float64}` and if it contai
 bound it do the variable `l` and added `1.0` to `l`, whereas if it was a `Right`, it took the `Float64` and bound it to a variable 
 `r` and subtracted `1` from `r`.
 
-</details>
+<!-- </details> -->
 
 ## Avoiding namespace clutter
 
-<details>
-<summary>Click to expand</summary>
+<!-- <details> -->
+<!-- <summary>Click to expand</summary> -->
 
 A common complaint about Enums and Sum Types is that sometimes they can contribute to clutter in the namespace. If you want to avoid having all the variants being available as top-level constant variables, then you can use the `hide_variants=true` option:
 
@@ -199,7 +204,7 @@ B(1)::Foo{Int64}
 Note that property-destructuring syntax is only available on julia version 1.7 and higher https://github.com/JuliaLang/julia/issues/39285
 
 
-</details>
+<!-- </details> -->
 
 
 ## Performance
