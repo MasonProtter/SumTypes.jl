@@ -254,7 +254,8 @@ If you overload `Base.show` directly inside a package, you might get annoying me
 
 In the same way as [Unityper.jl](https://github.com/YingboMa/Unityper.jl) is able to provide a dramatic speedup versus manual union splitting, SumTypes.jl can do this too:
 
-### Branching on abstractly typed data
+Branching on abstractly typed data
+
 <details>
 <summary>Benchmark code</summary>
 
