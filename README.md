@@ -4,6 +4,7 @@
 - [Pattern matching](https://github.com/MasonProtter/SumTypes.jl#pattern-matching-on-sum-types)
 - [Avoiding namespace clutter](https://github.com/MasonProtter/SumTypes.jl#avoiding-namespace-clutter)
 - [Performance](https://github.com/MasonProtter/SumTypes.jl#performance)
+- [Custom printing](https://github.com/MasonProtter/SumTypes.jl#custom-printing)
 
 ## Basics
 
@@ -399,3 +400,30 @@ Unityper.jl and SumTypes.jl are about equal in this benchmark. SumTypes.jl has s
 Whereas some advantages of Unityper.jl are:
 - A `@compactified` type from Unityper.jl will often have a smaller memory footprint than a corresponding type from SumTypes.jl
 - If we had used `D(;common_field=1, b="hi")` in our benchmarks, SumTypes.jl could have incurred an allocation whereas Unitypeper.jl would not. This allocation is due to the compiler heuristics involved in `::Union{T, Nothing}` fields of structs and may be fixed in future versions of julia.
+
+## Custom printing
+
+SumTypes.jl automatically overloads `Base.show(::IO, ::YourType)` and `Base.show(::IO, ::MIME"text/plain", ::YourType)` 
+for your type when you create a sum type, but it forwards that call to an internal function `SumTypes.show_sumtype`. If 
+you wish to customize the printing of a sum type, then you should overload `SumTypes.show_sumtype`:
+``` julia
+julia> SumTypes.show_sumtype(io::IO, x::Fruit2) = @cases x begin
+           apple => print(io, "apple")
+           orange => print(io, "orange")
+           banana => print(io, "banana")
+       end
+
+julia> apple
+apple
+
+julia> SumTypes.show_sumtype(io::IO, ::MIME"text/plain", x::Fruit2) = @cases x begin
+           apple => print(io, "apple!")
+           orange => print(io, "orange!")
+           banana => print(io, "banana!")
+       end
+
+julia> apple
+apple!
+```
+If you overload `Base.show` directly inside a package, you might get annoying method deletion warnings during pre-compilation.
+

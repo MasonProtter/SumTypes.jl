@@ -25,7 +25,17 @@ maybe_type(::Type{x}) where {x} = x
 maybe_type(::Singleton{x}) where {x} = Singleton{x}
 
 const tag = Symbol("#tag#")
-get_tag(x) = getfield(x, tag)
+get_tag(x) =getfield(x, tag) 
+
+show_sumtype(io::IO, m::MIME, x) = show_sumtype(io, x)
+function show_sumtype(io::IO, x)
+    tag = get_tag(x)
+    if getfield(x, tag) isa Singleton
+        print(io, String(tag), "::", typeof(x))
+    else
+        print(io, String(tag), '(', join((repr(data) for data ∈ getfield(x, tag)), ", "), ")::", typeof(x))
+    end
+end
 
 macro sum_type(T, blk::Expr, _hide_variants=:(hide_variants = false))
     if _hide_variants isa Expr && _hide_variants.head == :(=) && _hide_variants.args[1] == :hide_variants
@@ -247,18 +257,9 @@ macro sum_type(T, blk::Expr, _hide_variants=:(hide_variants = false))
         
         $Base.adjoint(::Type{$T_nameparam}) where {$(T_params...)} =
             $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.singleton ? :($T_nameparam($(nt.gname))) : nt.gnameparam  for nt ∈ constructors)...)))
+        $Base.show(io::IO, x::$T_name) = $show_sumtype(io, x)
+        $Base.show(io::IO, m::MIME"text/plain", x::$T_name) = $show_sumtype(io, m, x)
         
-        function $Base.show(io::IO, x::$T_nameparam) where {$(T_params...)}
-            tag = getfield(x, $(QuoteNode(tag)))
-            if getfield(x, tag) isa $Singleton
-                print(io, String(tag), "::", $T_nameparam)
-            else
-                print(io, String(tag), '(', join((repr(data) for data ∈ getfield(x, tag)), ", "), ")::", $T_nameparam)
-            end
-        end
-        function $Base.show(io::IO, ::MIME"text/plain", x::$T_nameparam) where {$(T_params...)}
-            $Base.show(io, x)
-        end
         #$SumTypes.deparameterize(::Type{<:$T_name}) = $T_name
         $SumTypes.tags(::Type{<:$T_name}) = $(Expr(:tuple, map(x -> QuoteNode(x.name), constructors)...))
         Base.:(==)(x::$T_name, y::$T_name) = $unwrap(x) == $unwrap(y)

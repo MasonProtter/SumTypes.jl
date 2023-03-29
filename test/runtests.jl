@@ -28,7 +28,7 @@ function Base.show(io::IO, l::List)
     print(io, "List", Tuple(l))
 end
 #-------------------
-@testset "Basics" begin
+@testset "Basics  " begin
     @test Bar(1) isa Foo
     @test_throws MethodError Foo(1)
     
@@ -126,5 +126,30 @@ end hide_variants = true
     @test 2 == @cases Hider2'.B begin
         A => 1
         B => 2
+    end
+end
+
+@sum_type Either2{A, B} begin
+    Left{A}(::A)
+    Right{B}(::B)
+end hide_variants = true
+
+SumTypes.show_sumtype(io::IO, x::Either2) = @cases x begin
+    Left(a) => print(io, "L($a)")
+    Right(a) => print(io, "R($a)")
+end
+
+SumTypes.show_sumtype(io::IO, ::MIME"text/plain", x::Either2) = @cases x begin
+    Left(a) => print(io, "The Leftestmost Value: $a")
+    Right(a) => print(io, "The Rightestmost Value: $a")
+end
+
+@testset "printing  " begin
+    @test repr(Left(1)) == "Left(1)::Either{Int64, Uninit}"
+    @test repr("text/plain", Right(3)) == "Right(3)::Either{Uninit, Int64}"
+
+    let Left = Either2'.Left, Right = Either2'.Right
+        @test repr("text/plain", Left(1)) == "The Leftestmost Value: 1"
+        @test repr(Right(3)) == "R(3)"
     end
 end
