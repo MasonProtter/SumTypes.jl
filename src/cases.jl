@@ -10,6 +10,11 @@
             throw(error("Inexhaustive @cases specification. Got cases $(variants), expected $(tags)"))
         end
     end
+    for variant ∈ variants
+        if variant ∉ tags
+            throw(error("Unexpected variant $variant provided. Valid variants are: $(tags)"))
+        end
+    end
     nothing
 end
 

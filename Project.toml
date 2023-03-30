@@ -1,7 +1,7 @@
 name = "SumTypes"
 uuid = "8e1ec7a9-0e02-4297-b0fe-6433085c89f2"
 authors = ["MasonProtter <mason.protter@icloud.com>"]
-version = "0.3.5"
+version = "0.3.6"
 
 [deps]
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"

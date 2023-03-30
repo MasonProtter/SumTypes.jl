@@ -40,16 +40,30 @@ end
             end
         end
     end
-    function either_test_incomp(x::Either)
+    @test either_test(Left(1)) == 2
+    @test either_test(Right(1)) == 0
+    
+    function either_test_incomplete(x::Either)
         let x::Either{Int, Int} = x
             @cases x begin
                 Left(l) => l + 1
             end
         end
     end
-    @test either_test(Left(1)) == 2
-    @test either_test(Right(1)) == 0
-    @test_throws ErrorException either_test_incomp(Left(1))
+    
+    @test_throws ErrorException either_test_incomplete(Left(1))
+
+    function either_test_overcomplete(x::Either)
+        let x::Either{Int, Int} = x
+            @cases x begin
+                Left(l) => l + 1
+                Right(r) => r - 1
+                Some_Bullshit => Inf
+            end
+        end
+    end
+    
+    @test_throws ErrorException either_test_overcomplete(Left(1))
 
     let x = Left([1]), y = Left([1.0]), z = Right([1])
         @test x == y
@@ -163,3 +177,4 @@ end
         @test repr(Right(3)) == "R(3)"
     end
 end
+
