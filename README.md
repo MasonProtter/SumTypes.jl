@@ -358,13 +358,13 @@ end
 
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  74.210 μs … 231.032 μs  ┊ GC (min … max): 0.00% … 0.00%
- Time  (median):     75.119 μs               ┊ GC (median):    0.00%
- Time  (mean ± σ):   79.962 μs ±  13.458 μs  ┊ GC (mean ± σ):  0.00% ± 0.00%
+ Range (min … max):  76.941 μs … 285.838 μs  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     83.523 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   89.009 μs ±  17.598 μs  ┊ GC (mean ± σ):  0.00% ± 0.00%
 
-  █▃  ▄▂▄  ▄▃   ▂▁                                             ▁
-  ███▆████▅███▇▇████▆█▅▇▅▇▇▆▇▆▅▅▅▆▅▅▅▅▅▅▅▆▅▅▅▆▅▅▅▅▅▁▅▅▅▅▅▄▄▅▅▅ █
-  74.2 μs       Histogram: log(frequency) by time       152 μs <
+  ▆  ▂█▄▂  ▃▃▂                                                 ▁
+  ██▆████▆▅███▇██▇▆█▇▇▇▇█▇▇▆█▇▇▇█▇▆▆▆▆▇▅▇▇▆▆▆▆▆▆▆▅▆▆▅▅▆▅▅▅▅▆▅▅ █
+  76.9 μs       Histogram: log(frequency) by time       167 μs <
 
  Memory estimate: 0 bytes, allocs estimate: 0.
 ```
@@ -434,7 +434,7 @@ BenchmarkTools.Trial: 10000 samples with 1 evaluation.
  Memory estimate: 0 bytes, allocs estimate: 0.
 ```
 
-Unityper.jl and SumTypes.jl are about equal in this benchmark. SumTypes.jl has some advantages relative to Unityper.jl too, such as:
+Unityper.jl SumTypes.jl is slightly slower in this benckmark, though there are others where it is faster. SumTypes.jl has some advantages relative to Unityper.jl too, such as:
 - SumTypes.jl allows [parametric types](https://docs.julialang.org/en/v1/manual/types/#Parametric-Types) for much greater container flexibility (Unityper does some memory layout optimizations that won't work with parametric types). 
 - SumTypes.jl does not require default values for every field of the struct
 - SumTypes.jl's `@cases` macro is more powerful and flexible than Unityper's `@compactified`.

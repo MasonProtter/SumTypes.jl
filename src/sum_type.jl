@@ -1,3 +1,4 @@
+
 macro sum_type(T, blk, _hide_variants=:(hide_variants = false))
     if _hide_variants isa Expr && _hide_variants.head == :(=) && _hide_variants.args[1] == :hide_variants
         hide_variants = _hide_variants.args[2]
@@ -23,147 +24,12 @@ macro sum_type(T, blk, _hide_variants=:(hide_variants = false))
     out, converts, singletons = generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
     ex = generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_nameparam, constructors, singletons)
     push!(out.args, ex)
+    push!(out.args, singletons)
     push!(out.args, converts...) # Conversion statements requre T to be defined
     esc(out)
 end
 
-function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_nameparam, constructors, singletons)
-        
-    con_nameparams  = (x -> x.nameparam ).(constructors)
-    con_gnameparams = (x -> x.gnameparam).(constructors)
-    con_names       = (x -> x.name      ).(constructors)
-    con_gnames      = (x -> x.gname     ).(constructors)
-    
-    data_fields = map(constructors) do nt
-        (name, params, nameparam, field_names, types, params_uninit, params_constrained, singleton, gname, gnameparam) = nt
-        if singleton
-            :($name :: $gnameparam)
-            #nothing
-        else
-            :($name :: Union{$gnameparam, Nothing})
-        end
-    end
-    sum_struct_def = Expr(:struct, false, T, Expr(:block, data_fields..., :($tag::Symbol), :(1 + 1)))
-
-    if_nest_unwrap = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), constructors, init=:(error("invalid tag"))) do nt
-        (name, _, _, _, _, _, _, _, _, gnameparam) = nt
-        :(tag === $(QuoteNode(name))), :($getfield(x, $(QuoteNode(name))) :: $gnameparam) 
-    end
-    ex = quote
-        $sum_struct_def
-        $singletons
-        $SumTypes.constructors(::Type{$T_name}) =
-            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.singleton ? nt.gnameparam : nt.gname for nt ∈ constructors)...)))
-        $SumTypes.constructors(::Type{$T_nameparam}) where {$(T_params...)} =
-            $NamedTuple{$tags($T_name)}($(Expr(:tuple,
-                                               (nt.gnameparam for nt ∈ constructors)...)))
-        $SumTypes.constructors_Union(::Type{$T_nameparam}) where {$(T_params...)}= $Union{$((nt.nameparam for nt ∈ constructors)...)}
-        $SumTypes.constructors_Union(::Type{$T_name}) = $Union{$((nt.singleton ? nt.nameparam : nt.name for nt ∈ constructors)...)}
-        $SumTypes.is_sumtype(::Type{<:$T_name}) = true
-        $SumTypes.unwrap(x::$T_nameparam) where {$(T_params...)}= let tag = getfield(x, $(QuoteNode(tag)))
-            $if_nest_unwrap
-        end
-        #$Base.adjoint(::Type{T}) where {T <: $T_name} = $SumTypes.constructors(T)
-        $Base.adjoint(::Type{$T_name}) =
-            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.gname  for nt ∈ constructors)...)))
-        
-        $Base.adjoint(::Type{$T_nameparam}) where {$(T_params...)} =
-            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.singleton ? :($T_nameparam($(nt.gname))) : nt.gnameparam  for nt ∈ constructors)...)))
-        $Base.show(io::IO, x::$T_name) = $show_sumtype(io, x)
-        $Base.show(io::IO, m::MIME"text/plain", x::$T_name) = $show_sumtype(io, m, x)
-        
-        #$SumTypes.deparameterize(::Type{<:$T_name}) = $T_name
-        $SumTypes.tags(::Type{<:$T_name}) = $(Expr(:tuple, map(x -> QuoteNode(x.name), constructors)...))
-        Base.:(==)(x::$T_name, y::$T_name) = $unwrap(x) == $unwrap(y)
-    end
-    foreach(constructors) do (name, params, nameparam, field_names, types, params_uninit, params_constrained, singleton, gname, gnameparam)
-        cons = quote
-            $SumTypes.constructor(::Type{$T_name}, ::Type{Val{$(QuoteNode(name))}}) = $(singleton ? gnameparam : gname)
-            $SumTypes.constructor(::Type{$T_nameparam}, ::Type{Val{$(QuoteNode(name))}}) where {$(T_params...)} = $gnameparam
-        end
-        push!(ex.args, cons)
-    end
-    ex
-end
-
-function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
-    out = Expr(:toplevel)
-    converts = []
-    singletons = Expr(:block)
-    foreach(constructors) do (name, params, nameparam, field_names, types, params_uninit, params_constrained, singleton, gname, gnameparam)
-        nameparam_constrained = isempty(params) ? name : :($name{$(params_constrained...)})
-        gnameparam_constrained = isempty(params) ? gname : :($gname{$(params_constrained...)})
-        T_uninit = isempty(T_params) ? T_name : :($T_name{$(params_uninit...)})
-        T_init = isempty(T_params) ? T_name : :($T_name{$(T_params...)})
-        if singleton
-            T_con_fields = map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
-                default = singleton ? :($_gnameparam()) : nothing
-                _name == name ? Singleton{gname}() : default
-            end
-            ex = quote
-                const $gname = $(Expr(:new, T_uninit, T_con_fields..., QuoteNode(name)))
-                # $SumTypes.parent(::Type{$Singleton{$(QuoteNode(name))}}) = $T_name
-            end
-            push!(singletons.args, ex)
-        else
-            field_names_typed = map(field_names, types) do name, type
-                :($name :: $type)
-            end
-            T_con_fields = map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
-                default = singleton ? :($_gnameparam()) : nothing
-                _name == name ? Expr(:new, gnameparam, field_names...) : default
-            end
-            T_con = :($gnameparam($(field_names_typed...)) where {$(params_constrained...)} =
-                $(Expr(:new, T_uninit, T_con_fields..., QuoteNode(name))))
-            
-            T_con_fields2 = map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
-                default = singleton ? :($_gnameparam()) : nothing
-                s = Expr(:new, gnameparam, [:($convert($type, $field_name)) for (type, field_name) ∈ zip(types, field_names)]...)
-                _name == name ? s : default
-            end
-            T_con2 = :($gnameparam($(field_names...)) where {$(params_constrained...)} =
-                $(Expr(:new, T_uninit, T_con_fields2..., QuoteNode(name))))
-            
-            unsafe_con = :($gnameparam(::$Unsafe, $(field_names_typed...)) where {$(params_constrained...)} = new{$(params...)}($(field_names...)))
-            struct_def = Expr(:struct, false, gnameparam_constrained, 
-                              Expr(:block, field_names_typed..., T_con, T_con2, unsafe_con))
-            maybe_no_param = if !isempty(params)
-                :($gname($(field_names_typed...)) where {$(params...)} = $gnameparam($(field_names...)))
-            end
-            ex = quote
-                $struct_def
-                $maybe_no_param
-                @inline $Base.iterate(x::$gname, s = 1) = s ≤ fieldcount($gname) ? (getfield(x, s), s + 1) : nothing
-                $Base.indexed_iterate(x::$gname, i::Int, state=1) = (Base.@_inline_meta; (getfield(x, i), i+1))
-                $SumTypes.parent(::Type{<:$gname}) = $T_name
-                function Base.:(==)(x::$gname, y::$gname)
-                    $(foldl((old, field) -> :($old && $isequal($getfield(x, $field), $getfield(y, $field))), QuoteNode.(field_names), init=true))
-                end
-            end
-            push!(out.args, ex)
-        end
-        if_nest = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), constructors, init=:(error("invalid tag"))) do (name,
-                                                                                                                              _,
-                                                                                                                              nameparam,
-                                                                                                                              _, _, _, _,
-                                                                                                                              _,
-                                                                                                                              gname,
-                                                                                                                              gnameparam)
-            data =  map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
-                default = singleton ? :($_gnameparam()) : nothing
-                _name == name ? :($getfield(x, $(QuoteNode(name))) :: $gnameparam) : default
-            end
-            :(tag === $(QuoteNode(name))), Expr(:new, T_init, data..., :tag)
-        end
-        if true#!isempty(T_params)
-            push!(converts,
-                  :($Base.convert(::Type{$T_init}, x::$T_uninit) where {$(T_params...)} = $(Expr(:block,
-                                                                                                 :(tag = getfield(x, $(QuoteNode(tag)) )), if_nest ))))
-            push!(converts, :($T_init(x::$T_uninit) where {$(T_params...)} = $convert($T_init, x)))
-        end
-    end
-    out, converts, singletons
-end
+#------------------------------------------------------
 
 function generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, blk::Expr)
     constructors = []
@@ -253,3 +119,165 @@ function generate_constructor_data(T_name, T_params, T_params_constrained, T_nam
     constructors
 end
 
+#------------------------------------------------------
+
+function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
+    out = Expr(:toplevel)
+    converts = []
+    singletons = Expr(:block)
+    foreach(constructors) do (name, params, nameparam, field_names, types, params_uninit, params_constrained, singleton, gname, gnameparam)
+        nameparam_constrained = isempty(params) ? name : :($name{$(params_constrained...)})
+        gnameparam_constrained = isempty(params) ? gname : :($gname{$(params_constrained...)})
+        T_uninit = isempty(T_params) ? T_name : :($T_name{$(params_uninit...)})
+        T_init = isempty(T_params) ? T_name : :($T_name{$(T_params...)})
+        if singleton
+            T_con_fields = map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
+                default = singleton ? :($_gnameparam()) : nothing
+                _name == name ? Singleton{gname}() : default
+            end
+            ex = quote
+                const $gname = $(Expr(:new, T_uninit, T_con_fields..., Expr(:call, symbol_to_flag, T_name, QuoteNode(name)) ))
+                # $SumTypes.parent(::Type{$Singleton{$(QuoteNode(name))}}) = $T_name
+            end
+            push!(singletons.args, ex)
+        else
+            field_names_typed = map(field_names, types) do name, type
+                :($name :: $type)
+            end
+            T_con_fields = map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
+                default = singleton ? :($_gnameparam()) : nothing
+                _name == name ? Expr(:new, gnameparam, field_names...) : default
+            end
+            T_con = :($gnameparam($(field_names_typed...)) where {$(params_constrained...)} =
+                $(Expr(:new, T_uninit, T_con_fields..., Expr(:call, symbol_to_flag, T_name, QuoteNode(name)) ) ))
+            
+            T_con_fields2 = map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
+                default = singleton ? :($_gnameparam()) : nothing
+                s = Expr(:new, gnameparam, [:($convert($type, $field_name)) for (type, field_name) ∈ zip(types, field_names)]...)
+                _name == name ? s : default
+            end
+            T_con2 = :($gnameparam($(field_names...)) where {$(params_constrained...)} =
+                $(Expr(:new, T_uninit, T_con_fields2..., Expr(:call, symbol_to_flag, T_name, QuoteNode(name)) )))
+            
+            unsafe_con = :($gnameparam(::$Unsafe, $(field_names_typed...)) where {$(params_constrained...)} = new{$(params...)}($(field_names...)))
+            struct_def = Expr(:struct, false, gnameparam_constrained, 
+                              Expr(:block, field_names_typed..., T_con, T_con2, unsafe_con))
+            maybe_no_param = if !isempty(params)
+                :($gname($(field_names_typed...)) where {$(params...)} = $gnameparam($(field_names...)))
+            end
+            ex = quote
+                $struct_def
+                $maybe_no_param
+                @inline $Base.iterate(x::$gname, s = 1) = s ≤ fieldcount($gname) ? (getfield(x, s), s + 1) : nothing
+                $Base.indexed_iterate(x::$gname, i::Int, state=1) = (Base.@_inline_meta; (getfield(x, i), i+1))
+                $SumTypes.parent(::Type{<:$gname}) = $T_name
+                function Base.:(==)(x::$gname, y::$gname)
+                    $(foldl((old, field) -> :($old && $isequal($getfield(x, $field), $getfield(y, $field))), QuoteNode.(field_names), init=true))
+                end
+            end
+            push!(out.args, ex)
+        end
+        enumerate_constructors = collect(enumerate(constructors))
+        if_nest = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), enumerate_constructors, init=:(error("invalid tag"))) do (i , (name,
+                                                                                                                                             _,
+                                                                                                                                             nameparam,
+                                                                                                                                             _, _, _, _,
+                                                                                                                                             _,
+                                                                                                                                             gname,
+                                                                                                                                             gnameparam))
+            data =  map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
+                default = singleton ? :($_gnameparam()) : nothing
+                _name == name ? :($getfield(x, $(QuoteNode(name))) :: $gnameparam) : default
+            end
+            :(tag == $i), Expr(:new, T_init, data..., :tag)
+        end
+        if true#!isempty(T_params)
+            push!(converts,
+                  :($Base.convert(::Type{$T_init}, x::$T_uninit) where {$(T_params...)} = $(Expr(:block,
+                                                                                                 :(tag = getfield(x, $(QuoteNode(tag)) )),
+                                                                                                 if_nest ))))
+            push!(converts, :($T_init(x::$T_uninit) where {$(T_params...)} = $convert($T_init, x)))
+        end
+    end
+    out, converts, singletons
+end
+
+
+
+#------------------------------------------------------
+
+function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_nameparam, constructors, singletons)
+        
+    con_nameparams  = (x -> x.nameparam ).(constructors)
+    con_gnameparams = (x -> x.gnameparam).(constructors)
+    con_names       = (x -> x.name      ).(constructors)
+    con_gnames      = (x -> x.gname     ).(constructors)
+
+    flagtype = length(constructors) <= typemax(UInt8) ? UInt8 : length(constructors) < typemax(UInt16) ? UInt16 :
+        error("Too many variants in SumType, got $(length(constructors)). The current maximum number is $(typemax(UInt16) |> Int)")
+    
+    data_fields = map(constructors) do nt
+        (name, params, nameparam, field_names, types, params_uninit, params_constrained, singleton, gname, gnameparam) = nt
+        if singleton
+            :($name :: $gnameparam)
+            #nothing
+        else
+            :($name :: Union{$gnameparam, Nothing})
+        end
+    end
+    
+    sum_struct_def = Expr(:struct, false, T, Expr(:block, data_fields..., :($tag :: $flagtype), :(1 + 1)))
+    enumerate_constructors = collect(enumerate(constructors))
+    if_nest_unwrap = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
+        (name, _, _, _, _, _, _, _, _, gnameparam) = nt
+        :(tag == $i), :($getfield(x, $(QuoteNode(name))) :: $gnameparam) 
+    end
+   
+    ex = quote
+        $sum_struct_def
+ 
+        $SumTypes.flagtype(::Type{<:$T_name}) = $flagtype
+        
+        $SumTypes.symbol_to_flag(::Type{<:$T_name}, sym::Symbol) =
+            $(foldr(collect(enumerate(con_names)), init=:(error("Invalid tag symbol $sym"))) do (i, _sym), old
+                  Expr(:if, :(sym == $(QuoteNode(_sym))), flagtype(i), old)
+              end)
+        $SumTypes.flag_to_symbol(::Type{<:$T_name}, flag::$flagtype) =
+            $(foldr(collect(enumerate(con_names)), init=:(error("Invalid tag symbol $sym"))) do (i, sym), old
+                  Expr(:if, :(flag == $i), QuoteNode(sym), old)
+              end)
+        $SumTypes.tags_flags_nt(::Type{<:$T_name}) = $(Expr(:tuple, Expr(:parameters, (Expr(:kw, name, flagtype(i)) for (i, name) ∈ enumerate(con_names))...)))
+        $SumTypes.tags(::Type{<:$T_name}) = $(Expr(:tuple, map(x -> QuoteNode(x.name), constructors)...))
+        
+        $SumTypes.constructors(::Type{$T_name}) =
+            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.singleton ? nt.gnameparam : nt.gname for nt ∈ constructors)...)))
+        $SumTypes.constructors(::Type{$T_nameparam}) where {$(T_params...)} =
+            $NamedTuple{$tags($T_name)}($(Expr(:tuple,
+                                               (nt.gnameparam for nt ∈ constructors)...)))
+        $SumTypes.constructors_Union(::Type{$T_nameparam}) where {$(T_params...)}= $Union{$((nt.nameparam for nt ∈ constructors)...)}
+        $SumTypes.constructors_Union(::Type{$T_name}) = $Union{$((nt.singleton ? nt.nameparam : nt.name for nt ∈ constructors)...)}
+        $SumTypes.is_sumtype(::Type{<:$T_name}) = true
+        $SumTypes.unwrap(x::$T_nameparam) where {$(T_params...)}= let tag = $get_tag(x)
+            $if_nest_unwrap
+        end
+        #$Base.adjoint(::Type{T}) where {T <: $T_name} = $SumTypes.constructors(T)
+    $Base.adjoint(::Type{$T_name}) =
+        $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.gname  for nt ∈ constructors)...)))
+    
+    $Base.adjoint(::Type{$T_nameparam}) where {$(T_params...)} =
+            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.singleton ? :($T_nameparam($(nt.gname))) : nt.gnameparam  for nt ∈ constructors)...)))
+        $Base.show(io::IO, x::$T_name) = $show_sumtype(io, x)
+        $Base.show(io::IO, m::MIME"text/plain", x::$T_name) = $show_sumtype(io, m, x)
+        
+        #$SumTypes.deparameterize(::Type{<:$T_name}) = $T_name
+        Base.:(==)(x::$T_name, y::$T_name) = $unwrap(x) == $unwrap(y)
+    end
+    foreach(constructors) do (name, params, nameparam, field_names, types, params_uninit, params_constrained, singleton, gname, gnameparam)
+        cons = quote
+            $SumTypes.constructor(::Type{$T_name}, ::Type{Val{$(QuoteNode(name))}}) = $(singleton ? gnameparam : gname)
+            $SumTypes.constructor(::Type{$T_nameparam}, ::Type{Val{$(QuoteNode(name))}}) where {$(T_params...)} = $gnameparam
+        end
+        push!(ex.args, cons)
+    end
+    ex
+end

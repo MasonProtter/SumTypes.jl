@@ -5,17 +5,18 @@
 @noinline matching_error() = throw(error("Something went wrong during matching"))
 
 @generated function assert_exhaustive(::Type{Val{tags}}, ::Type{Val{variants}}) where {tags, variants}
+    ret = nothing
     for tag ∈ tags
         if tag ∉ variants 
-            throw(error("Inexhaustive @cases specification. Got cases $(variants), expected $(tags)"))
+            ret = error("Inexhaustive @cases specification. Got cases $(variants), expected $(tags)")
         end
     end
     for variant ∈ variants
         if variant ∉ tags
-            throw(error("Unexpected variant $variant provided. Valid variants are: $(tags)"))
+            ret = error("Unexpected variant $variant provided. Valid variants are: $(tags)")
         end
     end
-    nothing
+    :($ret)
 end
 
 macro cases(to_match, block)
@@ -52,9 +53,10 @@ macro cases(to_match, block)
     @gensym con
     @gensym con_Union
     @gensym Typ
+    @gensym nt
     variants = map(x -> x.variant, stmts)
     
-    ex = :(if $get_tag($data) === $(QuoteNode(stmts[1].variant));
+    ex = :(if $get_tag($data) === $symbol_to_flag($Typ, $(QuoteNode(stmts[1].variant)));
                $(stmts[1].iscall ? :(($(stmts[1].fieldnames...),) =
                    $getfield($data, $(QuoteNode(stmts[1].variant))) :: $constructor($Typ, $Val{$(QuoteNode(stmts[1].variant))}  )) : nothing);
                $(stmts[1].rhs)
@@ -63,9 +65,9 @@ macro cases(to_match, block)
     pushfirst!(ex.args[2].args, lnns[1])
     to_push = ex.args
     for i ∈ 2:length(stmts)
-        _if = :(if $get_tag($data) === $(QuoteNode(stmts[i].variant));
+        _if = :(if $get_tag($data) === $symbol_to_flag($Typ, $(QuoteNode(stmts[i].variant)));
                     $(stmts[i].iscall ? :(($(stmts[i].fieldnames...),) =
-                        $getfield($data, $(QuoteNode(stmts[i].variant))):: $constructor($Typ, $Val{$(QuoteNode(stmts[i].variant))}   )) : nothing);
+                        $getfield($data, $(QuoteNode(stmts[i].variant))) :: $constructor($Typ, $Val{$(QuoteNode(stmts[i].variant))}   )) : nothing);
                     $(stmts[i].rhs)
                 end)
         _if.head = :elseif
@@ -80,6 +82,7 @@ macro cases(to_match, block)
         let $data = $to_match
             $Typ = $typeof($data)
             $check_sum_type($Typ)
+            # $nt = $tags_flags_nt($Typ)
             $assert_exhaustive(Val{$tags($Typ)}, Val{$(Expr(:tuple, QuoteNode.(deparameterize.(variants))...))})
             $ex
         end
