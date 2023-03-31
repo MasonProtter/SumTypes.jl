@@ -19,10 +19,6 @@
     :($ret)
 end
 
-@inline @generated function symbol_to_flag(::Type{T}, ::Val{s}) where {T, s}
-    symbol_to_flag(T, s)
-end
-
 macro cases(to_match, block)
     @assert block.head == :block
     lnns = filter(block.args) do arg

@@ -29,6 +29,7 @@ function Base.show(io::IO, l::List)
 end
 #-------------------
 @testset "Basics  " begin
+    @test SumTypes.is_sumtype(Int) == false
     @test Bar(1) isa Foo
     @test_throws MethodError Foo(1)
 
@@ -62,6 +63,14 @@ end
             end
         end
     end
+    
+    @test_throws ErrorException either_test_overcomplete(Left(1))
+
+    @test_throws ErrorException macroexpand(@__MODULE__(), :(@cases x begin
+        Left{Int}(x) => x
+        Right(x) => x
+    end))
+    
     
     @test_throws ErrorException either_test_overcomplete(Left(1))
 
@@ -130,11 +139,11 @@ end hide_variants = true
     @test Hider'.B != B
 
     @test 1 == @cases Hider'.A begin
-        A => 1
+        A() => 1
         B(a) => a
     end
     @test 2 == @cases Hider'.B(2) begin
-        A => 1
+        A() => 1
         B(a) => a
     end
 
@@ -153,6 +162,8 @@ end hide_variants = true
     end
 end
 
+
+
 @sum_type Either2{A, B} begin
     Left{A}(::A)
     Right{B}(::B)
@@ -168,6 +179,12 @@ SumTypes.show_sumtype(io::IO, ::MIME"text/plain", x::Either2) = @cases x begin
     Right(a) => print(io, "The Rightestmost Value: $a")
 end
 
+@sum_type Fruit begin
+    apple
+    banana
+    orange
+end
+
 @testset "printing  " begin
     @test repr(Left(1)) ∈  ("Left(1)::Either{Int64, Uninit}", "Left(1)::Either{Int64,Uninit}") 
     @test repr("text/plain", Right(3)) ∈ ("Right(3)::Either{Uninit, Int64}", "Right(3)::Either{Uninit,Int64}")
@@ -176,5 +193,6 @@ end
         @test repr("text/plain", Left(1)) == "The Leftestmost Value: 1"
         @test repr(Right(3)) == "R(3)"
     end
+    @test repr(apple) == "apple::Fruit"
 end
 
