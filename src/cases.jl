@@ -86,7 +86,7 @@ macro cases(to_match, block)
         let $data = $to_match
             $Typ = $typeof($data)
             $check_sum_type($Typ)
-            $nt = $tags_flags_nt($Typ)
+            # $nt = $tags_flags_nt($Typ)
             $assert_exhaustive(Val{$tags($Typ)}, Val{$(Expr(:tuple, QuoteNode.(deparameterize.(variants))...))})
             $ex
         end
