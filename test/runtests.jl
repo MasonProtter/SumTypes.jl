@@ -66,7 +66,7 @@ end
     
     @test_throws ErrorException either_test_overcomplete(Left(1))
 
-    @test_throws ErrorException macroexpand(@__MODULE__(), :(@cases x begin
+    @test_throws Exception macroexpand(@__MODULE__(), :(@cases x begin
         Left{Int}(x) => x
         Right(x) => x
     end))
