@@ -177,13 +177,14 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
             end
             push!(out.args, ex)
         end
-        if_nest = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), enumerate(constructors), init=:(error("invalid tag"))) do (i , (name,
-                                                                                                                                              _,
-                                                                                                                                              nameparam,
-                                                                                                                                              _, _, _, _,
-                                                                                                                                              _,
-                                                                                                                                              gname,
-                                                                                                                                              gnameparam))
+        enumerate_constructors = collect(enumerate(constructors))
+        if_nest = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), enumerate_constructors, init=:(error("invalid tag"))) do (i , (name,
+                                                                                                                                             _,
+                                                                                                                                             nameparam,
+                                                                                                                                             _, _, _, _,
+                                                                                                                                             _,
+                                                                                                                                             gname,
+                                                                                                                                             gnameparam))
             data =  map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
                 default = singleton ? :($_gnameparam()) : nothing
                 _name == name ? :($getfield(x, $(QuoteNode(name))) :: $gnameparam) : default
@@ -226,7 +227,7 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_n
     end
     
     sum_struct_def = Expr(:struct, false, T, Expr(:block, data_fields..., :($tag :: $flagtype), :(1 + 1)))
-
+    
     if_nest_unwrap = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), enumerate(constructors), init=:(error("invalid tag"))) do (i, nt)
         (name, _, _, _, _, _, _, _, _, gnameparam) = nt
         :(tag == $i), :($getfield(x, $(QuoteNode(name))) :: $gnameparam) 
