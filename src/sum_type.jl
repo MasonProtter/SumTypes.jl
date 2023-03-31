@@ -239,11 +239,11 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_n
         $SumTypes.flagtype(::Type{<:$T_name}) = $flagtype
         
         $SumTypes.symbol_to_flag(::Type{<:$T_name}, sym::Symbol) =
-            $(foldr(enumerate(con_names), init=:(error("Invalid tag symbol $sym"))) do (i, _sym), old
+            $(foldr(collect(enumerate(con_names)), init=:(error("Invalid tag symbol $sym"))) do (i, _sym), old
                   Expr(:if, :(sym == $(QuoteNode(_sym))), flagtype(i), old)
               end)
         $SumTypes.flag_to_symbol(::Type{<:$T_name}, flag::$flagtype) =
-            $(foldr(enumerate(con_names), init=:(error("Invalid tag symbol $sym"))) do (i, sym), old
+            $(foldr(collect(enumerate(con_names)), init=:(error("Invalid tag symbol $sym"))) do (i, sym), old
                   Expr(:if, :(flag == $i), QuoteNode(sym), old)
               end)
         $SumTypes.tags_flags_nt(::Type{<:$T_name}) = $(Expr(:tuple, Expr(:parameters, (Expr(:kw, name, flagtype(i)) for (i, name) ∈ enumerate(con_names))...)))
