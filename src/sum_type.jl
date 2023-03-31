@@ -227,8 +227,8 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_n
     end
     
     sum_struct_def = Expr(:struct, false, T, Expr(:block, data_fields..., :($tag :: $flagtype), :(1 + 1)))
-    
-    if_nest_unwrap = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), enumerate(constructors), init=:(error("invalid tag"))) do (i, nt)
+    enumerate_constructors = collect(enumerate(constructors))
+    if_nest_unwrap = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
         (name, _, _, _, _, _, _, _, _, gnameparam) = nt
         :(tag == $i), :($getfield(x, $(QuoteNode(name))) :: $gnameparam) 
     end
