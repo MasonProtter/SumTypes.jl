@@ -130,6 +130,7 @@ end
 
 function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
     out = Expr(:toplevel)
+    converts = []
     foreach(constructors) do nt
         name = nt.name
         gname = nt.gname 
@@ -179,9 +180,10 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
                                                           for (field_type, field_name) ∈ zip(field_types, field_names)]...))
                 nt.name == name ? s : default
             end
-            T_con2 = :($gouter_type($(field_names...)) where {$(params_constrained...)} =
-                $(Expr(:new, T_uninit, T_con_fields2..., Expr(:call, symbol_to_flag, T_name, QuoteNode(name)) )))
-            
+            T_con2 = if !all(x -> x ∈ (Any, :Any) ,field_types)
+                :($gouter_type($(field_names...)) where {$(params_constrained...)} =
+                    $(Expr(:new, T_uninit, T_con_fields2..., Expr(:call, symbol_to_flag, T_name, QuoteNode(name)) )))
+            end
             maybe_no_param = if !isempty(params)
                 :($gname($(field_names_typed...)) where {$(params...)} = $gouter_type($(field_names...)))
             end
@@ -205,13 +207,16 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
             :(tag == $i), Expr(:new, T_init, data..., :tag)
         end
         if true
-            push!(out.args,
-                  :($Base.convert(::Type{$T_init}, x::$T_uninit) where {$(T_params...)} = $(Expr(:block,
-                                                                                                 :(tag = getfield(x, $(QuoteNode(tag)) )),
-                                                                                                 if_nest ))))
-            push!(out.args, :($T_init(x::$T_uninit) where {$(T_params...)} = $convert($T_init, x)))
+            push!(converts, T_uninit => quote
+                      $Base.convert(::Type{$T_init}, x::$T_uninit) where {$(T_params...)} = $(Expr(:block,
+                                                                                                   :(tag = getfield(x, $(QuoteNode(tag)) )),
+                                                                                                   if_nest ))
+                      $T_init(x::$T_uninit) where {$(T_params...)} = $convert($T_init, x)
+                  end)
         end
     end
+    unique!(x -> x[1], converts)
+    append!(out.args, converts)
     out
 end
 
@@ -244,6 +249,16 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_n
         :(tag == $i), :($getfield(x, $(QuoteNode(nt.name)))) 
     end
 
+    only_define_with_params = if !isempty(T_params)
+        quote
+            $SumTypes.constructors(::Type{$T_nameparam}) where {$(T_params...)} =
+                $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.store_type for nt ∈ constructors)...)))
+            $Base.adjoint(::Type{$T_nameparam}) where {$(T_params...)} =
+                $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.value ? :($T_nameparam($(nt.gname))) : nt.gouter_type for nt ∈ constructors)...)))
+        end 
+    end
+
+
     ex = quote
         $sum_struct_def
         $SumTypes.is_sumtype(::Type{<:$T_name}) = true
@@ -263,28 +278,27 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_n
         
         $SumTypes.constructors(::Type{$T_name}) =
             $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.store_type_uninit for nt ∈ constructors)...)))
-        $SumTypes.constructors(::Type{$T_nameparam}) where {$(T_params...)} =
-            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.store_type for nt ∈ constructors)...)))
         
-        $SumTypes.unwrap(x::$T_nameparam) where {$(T_params...)}= let tag = $get_tag(x)
+        $SumTypes.unwrap(x::$T_name) = let tag = $get_tag(x)
             $if_nest_unwrap
         end
         $Base.adjoint(::Type{$T_name}) =
             $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.gname  for nt ∈ constructors)...)))
         
-        $Base.adjoint(::Type{$T_nameparam}) where {$(T_params...)} =
-            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.value ? :($T_nameparam($(nt.gname))) : nt.gouter_type for nt ∈ constructors)...)))
+
         $Base.show(io::IO, x::$T_name) = $show_sumtype(io, x)
         $Base.show(io::IO, m::MIME"text/plain", x::$T_name) = $show_sumtype(io, m, x)
 
         Base.:(==)(x::$T_name, y::$T_name) = ($get_tag(x) == $get_tag(y)) && ($unwrap(x) == $unwrap(y))
+        $only_define_with_params 
     end
     foreach(constructors) do nt
-        cons = quote
-            $SumTypes.constructor(::Type{$T_name}, ::Type{Val{$(QuoteNode(nt.name))}}) = $(nt.store_type_uninit)
-            $SumTypes.constructor(::Type{$T_nameparam}, ::Type{Val{$(QuoteNode(nt.name))}}) where {$(T_params...)} = $(nt.store_type)
-        end
-        push!(ex.args, cons)
+        
+        con1 = :($SumTypes.constructor(::Type{$T_name}, ::Type{Val{$(QuoteNode(nt.name))}}) = $(nt.store_type_uninit))
+        con2 = if !isempty(T_params)
+            :($SumTypes.constructor(::Type{$T_nameparam}, ::Type{Val{$(QuoteNode(nt.name))}}) where {$(T_params...)} = $(nt.store_type))
+        end 
+        push!(ex.args, con1, con2)
     end
     ex
 end

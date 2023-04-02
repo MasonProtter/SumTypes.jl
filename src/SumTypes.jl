@@ -23,7 +23,6 @@ const unsafe = Unsafe()
 
 struct Uninit end
 
-
 struct Variant{fieldnames, Tup <: Tuple}
     data::Tup
     Variant{fieldnames, Tup}(::Unsafe) where {fieldnames, Tup} = new{fieldnames, Tup}()
