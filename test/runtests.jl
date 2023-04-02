@@ -73,6 +73,7 @@ end
         @test x == y
         @test x != z
     end
+    @test SumTypes.get_tag_sym(Left([1])) == :Left
     
     @test_throws MethodError Left{Int}("hi")
     @test_throws MethodError Right{String}(1)

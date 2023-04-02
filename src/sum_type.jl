@@ -24,10 +24,6 @@ macro sum_type(T, blk, _hide_variants=:(hide_variants = false))
     con_expr = generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
     out = generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_nameparam, constructors)
     Expr(:toplevel, out, con_expr) |> esc
-    # push!(out.args, ex)
-    # push!(out.args, values)
-    # push!(out.args, converts...) # Conversion statements requre T to be defined
-    # esc(out)
 end
 
 #------------------------------------------------------
@@ -68,7 +64,6 @@ function generate_constructor_data(T_name, T_params, T_params_constrained, T_nam
             if !issubset(con_params, T_params)
                 error("constructor parameters ($con_params) for $con_name, not a subset of sum type parameters $T_params")
             end
-            #@assert con_params == T_params "constructors currently must have same parameters as the sum type. Got $T and $(con.args[1])"
             con_params_uninit = let v = copy(con_params)
                 for i ∈ eachindex(T_params)
                     if T_params[i] ∉ con_params
@@ -135,8 +130,7 @@ end
 
 function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
     out = Expr(:toplevel)
-    #converts = []
-    foreach(constructors) do nt#(name, params, nameparam, field_names, types, params_uninit, params_constrained, value, gname, gnameparam)
+    foreach(constructors) do nt
         name = nt.name
         gname = nt.gname 
         params = nt.params
@@ -168,7 +162,6 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
             end
 
             push!(out.args, ex)
-            #push!(values.args, ex)
         else
             field_names_typed = map(((name, type),) -> :($name :: $type), zip(field_names, field_types))
             
@@ -182,7 +175,8 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
 
             T_con_fields2 = map(constructors) do nt
                 default = nt.value ? :($(nt.store_type_uninit)($unsafe)) : nothing
-                s = Expr(:call, store_type, Expr(:tuple, [:($convert($field_type, $field_name)) for (field_type, field_name) ∈ zip(field_types, field_names)]...))
+                s = Expr(:call, store_type, Expr(:tuple, [:($convert($field_type, $field_name))
+                                                          for (field_type, field_name) ∈ zip(field_types, field_names)]...))
                 nt.name == name ? s : default
             end
             T_con2 = :($gouter_type($(field_names...)) where {$(params_constrained...)} =
@@ -192,9 +186,6 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
                 :($gname($(field_names_typed...)) where {$(params...)} = $gouter_type($(field_names...)))
             end
             struct_def = Expr(:struct, false, gouter_type_constrained, Expr(:block, :(1 + 1)))
-            # @eval $struct_def
-            # dump(struct_def)
-            # ex = Expr(:toplevel, struct_def)
             ex = quote
                 $struct_def
                 $T_con
@@ -213,7 +204,7 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
             end
             :(tag == $i), Expr(:new, T_init, data..., :tag)
         end
-        if true#!isempty(T_params)
+        if true
             push!(out.args,
                   :($Base.convert(::Type{$T_init}, x::$T_uninit) where {$(T_params...)} = $(Expr(:block,
                                                                                                  :(tag = getfield(x, $(QuoteNode(tag)) )),
@@ -229,19 +220,6 @@ end
 #------------------------------------------------------
 
 function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_nameparam, constructors)
-
-    # name = nt.name
-    # gname = nt.gname 
-    # params = nt.params
-    # store_type = nt.store_type
-    # outer_type = nt.outer_type
-    # gouter_type = nt.gouter_type
-    # field_names = nt.field_names
-    # field_types = nt.field_types
-    # params_uninit= nt.params_uninit
-    # params_constrained = nt.params_constrained
-    # value = nt.value
-    
     con_outer_types  = (x -> x.outer_type ).(constructors)
     con_gouter_types = (x -> x.gouter_type).(constructors)
     con_names        = (x -> x.name       ).(constructors)

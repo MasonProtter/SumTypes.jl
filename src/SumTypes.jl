@@ -23,17 +23,12 @@ const unsafe = Unsafe()
 
 struct Uninit end
 
-# struct Singleton{name} end
-# Singleton{name}(::Unsafe) where {name} = Singleton{name}()
-# Base.iterate(x::Singleton, s = 1) = nothing
-# maybe_type(::Type{x}) where {x} = x
-# maybe_type(::Singleton{x}) where {x} = Singleton{x}
 
 struct Variant{fieldnames, Tup <: Tuple}
     data::Tup
     Variant{fieldnames, Tup}(::Unsafe) where {fieldnames, Tup} = new{fieldnames, Tup}()
-    Variant(::Unsafe, nt::NamedTuple{names, Tup}) where {names, Tup} = new{fieldnames, Tup}(Tuple(nt))
-    Variant{fieldnames}(t::Tup) where {fieldnames, Tup <: Tuple} = new{fieldnames, Tup}(t)
+    # Variant(::Unsafe, nt::NamedTuple{names, Tup}) where {names, Tup} = new{fieldnames, Tup}(Tuple(nt))
+    # Variant{fieldnames}(t::Tup) where {fieldnames, Tup <: Tuple} = new{fieldnames, Tup}(t)
     Variant{fieldnames, Tup}(t::Tuple) where {fieldnames, Tup <: Tuple} = new{fieldnames, Tup}(t)
 end
 Base.:(==)(v1::Variant, v2::Variant) = v1.data == v2.data
@@ -41,15 +36,9 @@ Base.:(==)(v1::Variant, v2::Variant) = v1.data == v2.data
 Base.iterate(x::Variant, s = 1) = iterate(x.data, s)
 Base.indexed_iterate(x::Variant, i::Int, state=1) = (Base.@_inline_meta; (getfield(x.data, i), i+1))
 
-maybe_type(::Type{x}) where {x} = x
-maybe_type(::Variant{fieldnames, Tup}) where {fieldnames, Tup} = Variant{fieldnames, Tup}
-#maybe_type(::Singleton{x}) where {x} = Singleton{x}
-
 const tag = Symbol("#tag#")
-get_tag(x) =getfield(x, tag)
-get_tag_sym(x::T) where {T} = tags_flags_nt(T)[get_tag(x)]
-# get_tag(x::T) where {T} = getfield(x, tag)
-
+get_tag(x) = getfield(x, tag)
+get_tag_sym(x::T) where {T} = keys(tags_flags_nt(T))[Int(get_tag(x))]
 
 show_sumtype(io::IO, m::MIME, x) = show_sumtype(io, x)
 function show_sumtype(io::IO, x::T) where {T}
