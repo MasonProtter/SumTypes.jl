@@ -58,7 +58,7 @@ macro cases(to_match, block)
     
     ex = :(if $get_tag($data) === $symbol_to_flag($Typ, $(QuoteNode(stmts[1].variant)));
                $(stmts[1].iscall ? :(($(stmts[1].fieldnames...),) =
-                   $getfield($data, $(QuoteNode(stmts[1].variant))) :: $constructor($Typ, $Val{$(QuoteNode(stmts[1].variant))}  )) : nothing);
+                   $getfield($data, $(QuoteNode(stmts[1].variant))) :: $constructor($Typ, $Val{$(QuoteNode(stmts[1].variant))}  )  ) : nothing);
                $(stmts[1].rhs)
            end)
     Base.remove_linenums!(ex)

@@ -15,23 +15,24 @@ macro sum_type(T, blk, _hide_variants=:(hide_variants = false))
     T_nameparam = isempty(T_params) ? T : :($T_name{$(T_params...)})
     filter!(x -> !(x isa LineNumberNode), blk.args)
     
-    constructors = generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, blk)
+    constructors = generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, hash(__module__), blk)
     
     if !allunique(map(x -> x.name, constructors))
         error("constructors must have unique names, got $(map(x -> x.name, constructors))")
     end
 
-    out, converts, singletons = generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
-    ex = generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_nameparam, constructors, singletons)
-    push!(out.args, ex)
-    push!(out.args, singletons)
-    push!(out.args, converts...) # Conversion statements requre T to be defined
-    esc(out)
+    con_expr = generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
+    out = generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_nameparam, constructors)
+    Expr(:toplevel, out, con_expr) |> esc
+    # push!(out.args, ex)
+    # push!(out.args, values)
+    # push!(out.args, converts...) # Conversion statements requre T to be defined
+    # esc(out)
 end
 
 #------------------------------------------------------
 
-function generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, blk::Expr)
+function generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, hsh, blk::Expr)
     constructors = []
     for con_ ∈ blk.args
         con_ isa LineNumberNode && continue
@@ -41,16 +42,20 @@ function generate_constructor_data(T_name, T_params, T_params_constrained, T_nam
             else
                 gname = con_
             end
-            nt = (; name = con_,
+            name = con_
+            nt = (;
+                  name = name,
+                  gname = gname,
                   params = [],
-                  nameparam = Singleton{con_},
+                  store_type = Variant{(), Tuple{}},
+                  store_type_uninit = Variant{(), Tuple{}},
+                  outer_type = name,
+                  gouter_type = gname,
                   field_names = [],
-                  types = [],
+                  field_types = [],
                   params_uninit=[Uninit for _ ∈ T_params],
                   params_constrained = [],
-                  singleton = true,
-                  gname = gname,
-                  gnameparam = Singleton{gname},
+                  value = true,
                   )
             push!(constructors, nt)
         else
@@ -94,6 +99,10 @@ function generate_constructor_data(T_name, T_params, T_params_constrained, T_nam
                     field.args[2]
                 end
             end
+            con_field_types_uninit = map(con_field_types) do T
+                T ∈ con_params ? Uninit : T
+            end
+            
             if hide_variants
                 gname = Symbol("#", T_name, "#", con_name)
                 gnameparam = isempty(con_params) ? gname : :($gname{$(con_params...)})
@@ -101,18 +110,21 @@ function generate_constructor_data(T_name, T_params, T_params_constrained, T_nam
                 gname = con_name
                 gnameparam = con_nameparam
             end
-            nt = (
-                name=con_name,
-                params=con_params,
-                nameparam = con_nameparam,
-                field_names=con_field_names,
-                types=con_field_types,
-                params_uninit=con_params_uninit,
-                params_constrained = con_params_constrained,
-                singleton = false,
-                gname = gname,
-                gnameparam = gnameparam,
-            )
+
+            nt = (;
+                  name = con_name,
+                  gname = gname,
+                  params = con_params,
+                  store_type = :($Variant{($(QuoteNode.(con_field_names)...),), Tuple{$(con_field_types...)}}),
+                  store_type_uninit = :($Variant{($(QuoteNode.(con_field_names)...),), Tuple{$(con_field_types_uninit...)}}),
+                  outer_type = con_nameparam,
+                  gouter_type = gnameparam,
+                  field_names = con_field_names,
+                  field_types = con_field_types,
+                  params_uninit= con_params_uninit,
+                  params_constrained = con_params_constrained,
+                  value = false,
+                  )
             push!(constructors, nt)
         end
     end
@@ -123,119 +135,141 @@ end
 
 function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
     out = Expr(:toplevel)
-    converts = []
-    singletons = Expr(:block)
-    foreach(constructors) do (name, params, nameparam, field_names, types, params_uninit, params_constrained, singleton, gname, gnameparam)
-        nameparam_constrained = isempty(params) ? name : :($name{$(params_constrained...)})
-        gnameparam_constrained = isempty(params) ? gname : :($gname{$(params_constrained...)})
+    #converts = []
+    foreach(constructors) do nt#(name, params, nameparam, field_names, types, params_uninit, params_constrained, value, gname, gnameparam)
+        name = nt.name
+        gname = nt.gname 
+        params = nt.params
+        store_type = nt.store_type
+        store_type_uninit = nt.store_type_uninit
+        outer_type = nt.outer_type
+        gouter_type = nt.gouter_type
+        field_names = nt.field_names
+        field_types = nt.field_types
+        params_uninit= nt.params_uninit
+        params_constrained = nt.params_constrained
+        value = nt.value
+
+        outer_type_constrained = isempty(params) ? name : :($name{$(params_constrained...)})
+        gouter_type_constrained = isempty(params) ? gname : :($gname{$(params_constrained...)})
+
         T_uninit = isempty(T_params) ? T_name : :($T_name{$(params_uninit...)})
         T_init = isempty(T_params) ? T_name : :($T_name{$(T_params...)})
-        if singleton
-            T_con_fields = map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
-                default = singleton ? :($_gnameparam()) : nothing
-                _name == name ? Singleton{gname}() : default
+        if value
+            T_con_fields = map(constructors) do nt
+                if nt.value
+                    :($(nt.store_type_uninit)($unsafe))
+                else
+                    nothing
+                end
             end
             ex = quote
                 const $gname = $(Expr(:new, T_uninit, T_con_fields..., Expr(:call, symbol_to_flag, T_name, QuoteNode(name)) ))
-                # $SumTypes.parent(::Type{$Singleton{$(QuoteNode(name))}}) = $T_name
             end
-            push!(singletons.args, ex)
+
+            push!(out.args, ex)
+            #push!(values.args, ex)
         else
-            field_names_typed = map(field_names, types) do name, type
-                :($name :: $type)
-            end
-            T_con_fields = map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
-                default = singleton ? :($_gnameparam()) : nothing
-                _name == name ? Expr(:new, gnameparam, field_names...) : default
-            end
-            T_con = :($gnameparam($(field_names_typed...)) where {$(params_constrained...)} =
-                $(Expr(:new, T_uninit, T_con_fields..., Expr(:call, symbol_to_flag, T_name, QuoteNode(name)) ) ))
+            field_names_typed = map(((name, type),) -> :($name :: $type), zip(field_names, field_types))
             
-            T_con_fields2 = map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
-                default = singleton ? :($_gnameparam()) : nothing
-                s = Expr(:new, gnameparam, [:($convert($type, $field_name)) for (type, field_name) ∈ zip(types, field_names)]...)
-                _name == name ? s : default
+            T_con_fields = map(constructors) do nt#(_name, _, _nameparam, _, _, _, _, value, _gname, _gnameparam)
+                
+                default = nt.value ? :($(nt.store_type_uninit)($unsafe)) : nothing
+                name == nt.name ? :($store_type(($(field_names...),))) : default
             end
-            T_con2 = :($gnameparam($(field_names...)) where {$(params_constrained...)} =
+            T_con = :($gouter_type($(field_names_typed...)) where {$(params_constrained...)} =
+                $(Expr(:new, T_uninit, T_con_fields..., Expr(:call, symbol_to_flag, T_name, QuoteNode(name)) ) ))
+
+            T_con_fields2 = map(constructors) do nt
+                default = nt.value ? :($(nt.store_type_uninit)($unsafe)) : nothing
+                s = Expr(:call, store_type, Expr(:tuple, [:($convert($field_type, $field_name)) for (field_type, field_name) ∈ zip(field_types, field_names)]...))
+                nt.name == name ? s : default
+            end
+            T_con2 = :($gouter_type($(field_names...)) where {$(params_constrained...)} =
                 $(Expr(:new, T_uninit, T_con_fields2..., Expr(:call, symbol_to_flag, T_name, QuoteNode(name)) )))
             
-            unsafe_con = :($gnameparam(::$Unsafe, $(field_names_typed...)) where {$(params_constrained...)} = new{$(params...)}($(field_names...)))
-            struct_def = Expr(:struct, false, gnameparam_constrained, 
-                              Expr(:block, field_names_typed..., T_con, T_con2, unsafe_con))
             maybe_no_param = if !isempty(params)
-                :($gname($(field_names_typed...)) where {$(params...)} = $gnameparam($(field_names...)))
+                :($gname($(field_names_typed...)) where {$(params...)} = $gouter_type($(field_names...)))
             end
+            struct_def = Expr(:struct, false, gouter_type_constrained, Expr(:block, :(1 + 1)))
+            # @eval $struct_def
+            # dump(struct_def)
+            # ex = Expr(:toplevel, struct_def)
             ex = quote
                 $struct_def
+                $T_con
+                $T_con2
                 $maybe_no_param
-                @inline $Base.iterate(x::$gname, s = 1) = s ≤ fieldcount($gname) ? (getfield(x, s), s + 1) : nothing
-                $Base.indexed_iterate(x::$gname, i::Int, state=1) = (Base.@_inline_meta; (getfield(x, i), i+1))
                 $SumTypes.parent(::Type{<:$gname}) = $T_name
-                function Base.:(==)(x::$gname, y::$gname)
-                    $(foldl((old, field) -> :($old && $isequal($getfield(x, $field), $getfield(y, $field))), QuoteNode.(field_names), init=true))
-                end
             end
             push!(out.args, ex)
         end
         enumerate_constructors = collect(enumerate(constructors))
-        if_nest = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), enumerate_constructors, init=:(error("invalid tag"))) do (i , (name,
-                                                                                                                                             _,
-                                                                                                                                             nameparam,
-                                                                                                                                             _, _, _, _,
-                                                                                                                                             _,
-                                                                                                                                             gname,
-                                                                                                                                             gnameparam))
-            data =  map(constructors) do (_name, _, _nameparam, _, _, _, _, singleton, _gname, _gnameparam)
-                default = singleton ? :($_gnameparam()) : nothing
-                _name == name ? :($getfield(x, $(QuoteNode(name))) :: $gnameparam) : default
+        if_nest = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), enumerate_constructors, init=:(error("invalid tag"))) do (i , nt)
+            name = nt.name
+            data =  map(constructors) do nt
+                default = nt.value ? :($(nt.store_type_uninit)($unsafe)) : nothing
+                nt.name == name ? :($getfield(x, $(QuoteNode(name))) :: $(nt.store_type)) : default
             end
             :(tag == $i), Expr(:new, T_init, data..., :tag)
         end
         if true#!isempty(T_params)
-            push!(converts,
+            push!(out.args,
                   :($Base.convert(::Type{$T_init}, x::$T_uninit) where {$(T_params...)} = $(Expr(:block,
                                                                                                  :(tag = getfield(x, $(QuoteNode(tag)) )),
                                                                                                  if_nest ))))
-            push!(converts, :($T_init(x::$T_uninit) where {$(T_params...)} = $convert($T_init, x)))
+            push!(out.args, :($T_init(x::$T_uninit) where {$(T_params...)} = $convert($T_init, x)))
         end
     end
-    out, converts, singletons
+    out
 end
 
 
 
 #------------------------------------------------------
 
-function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_nameparam, constructors, singletons)
-        
-    con_nameparams  = (x -> x.nameparam ).(constructors)
-    con_gnameparams = (x -> x.gnameparam).(constructors)
-    con_names       = (x -> x.name      ).(constructors)
-    con_gnames      = (x -> x.gname     ).(constructors)
+function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_nameparam, constructors)
 
-    flagtype = length(constructors) <= typemax(UInt8) ? UInt8 : length(constructors) < typemax(UInt16) ? UInt16 :
-        error("Too many variants in SumType, got $(length(constructors)). The current maximum number is $(typemax(UInt16) |> Int)")
+    # name = nt.name
+    # gname = nt.gname 
+    # params = nt.params
+    # store_type = nt.store_type
+    # outer_type = nt.outer_type
+    # gouter_type = nt.gouter_type
+    # field_names = nt.field_names
+    # field_types = nt.field_types
+    # params_uninit= nt.params_uninit
+    # params_constrained = nt.params_constrained
+    # value = nt.value
+    
+    con_outer_types  = (x -> x.outer_type ).(constructors)
+    con_gouter_types = (x -> x.gouter_type).(constructors)
+    con_names        = (x -> x.name       ).(constructors)
+    con_gnames       = (x -> x.gname      ).(constructors)
+
+    flagtype = length(constructors) <= typemax(UInt8) ? UInt8 : length(constructors) < typemax(UInt16) ? UInt16 : length(constructors) <= typemax(UInt32) ? UInt32 :
+        error("Too many variants in SumType, got $(length(constructors)). The current maximum number is $(typemax(UInt32) |> Int)")
     
     data_fields = map(constructors) do nt
-        (name, params, nameparam, field_names, types, params_uninit, params_constrained, singleton, gname, gnameparam) = nt
-        if singleton
-            :($name :: $gnameparam)
-            #nothing
-        else
-            :($name :: Union{$gnameparam, Nothing})
+        name = nt.name
+        store_type = nt.store_type
+        if nt.value
+            :($name :: $store_type)
+        else 
+            :($name :: Union{$Nothing, $store_type})
         end
     end
     
     sum_struct_def = Expr(:struct, false, T, Expr(:block, data_fields..., :($tag :: $flagtype), :(1 + 1)))
     enumerate_constructors = collect(enumerate(constructors))
     if_nest_unwrap = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
-        (name, _, _, _, _, _, _, _, _, gnameparam) = nt
-        :(tag == $i), :($getfield(x, $(QuoteNode(name))) :: $gnameparam) 
+        :(tag == $i), :($getfield(x, $(QuoteNode(nt.name)))) 
     end
-   
+
     ex = quote
         $sum_struct_def
- 
+        $SumTypes.is_sumtype(::Type{<:$T_name}) = true
+        
         $SumTypes.flagtype(::Type{<:$T_name}) = $flagtype
         
         $SumTypes.symbol_to_flag(::Type{<:$T_name}, sym::Symbol) =
@@ -250,32 +284,27 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_n
         $SumTypes.tags(::Type{<:$T_name}) = $(Expr(:tuple, map(x -> QuoteNode(x.name), constructors)...))
         
         $SumTypes.constructors(::Type{$T_name}) =
-            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.singleton ? nt.gnameparam : nt.gname for nt ∈ constructors)...)))
+            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.store_type_uninit for nt ∈ constructors)...)))
         $SumTypes.constructors(::Type{$T_nameparam}) where {$(T_params...)} =
-            $NamedTuple{$tags($T_name)}($(Expr(:tuple,
-                                               (nt.gnameparam for nt ∈ constructors)...)))
-        $SumTypes.constructors_Union(::Type{$T_nameparam}) where {$(T_params...)}= $Union{$((nt.nameparam for nt ∈ constructors)...)}
-        $SumTypes.constructors_Union(::Type{$T_name}) = $Union{$((nt.singleton ? nt.nameparam : nt.name for nt ∈ constructors)...)}
-        $SumTypes.is_sumtype(::Type{<:$T_name}) = true
+            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.store_type for nt ∈ constructors)...)))
+        
         $SumTypes.unwrap(x::$T_nameparam) where {$(T_params...)}= let tag = $get_tag(x)
             $if_nest_unwrap
         end
-        #$Base.adjoint(::Type{T}) where {T <: $T_name} = $SumTypes.constructors(T)
-    $Base.adjoint(::Type{$T_name}) =
-        $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.gname  for nt ∈ constructors)...)))
-    
-    $Base.adjoint(::Type{$T_nameparam}) where {$(T_params...)} =
-            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.singleton ? :($T_nameparam($(nt.gname))) : nt.gnameparam  for nt ∈ constructors)...)))
+        $Base.adjoint(::Type{$T_name}) =
+            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.gname  for nt ∈ constructors)...)))
+        
+        $Base.adjoint(::Type{$T_nameparam}) where {$(T_params...)} =
+            $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.value ? :($T_nameparam($(nt.gname))) : nt.gouter_type for nt ∈ constructors)...)))
         $Base.show(io::IO, x::$T_name) = $show_sumtype(io, x)
         $Base.show(io::IO, m::MIME"text/plain", x::$T_name) = $show_sumtype(io, m, x)
-        
-        #$SumTypes.deparameterize(::Type{<:$T_name}) = $T_name
-        Base.:(==)(x::$T_name, y::$T_name) = $unwrap(x) == $unwrap(y)
+
+        Base.:(==)(x::$T_name, y::$T_name) = ($get_tag(x) == $get_tag(y)) && ($unwrap(x) == $unwrap(y))
     end
-    foreach(constructors) do (name, params, nameparam, field_names, types, params_uninit, params_constrained, singleton, gname, gnameparam)
+    foreach(constructors) do nt
         cons = quote
-            $SumTypes.constructor(::Type{$T_name}, ::Type{Val{$(QuoteNode(name))}}) = $(singleton ? gnameparam : gname)
-            $SumTypes.constructor(::Type{$T_nameparam}, ::Type{Val{$(QuoteNode(name))}}) where {$(T_params...)} = $gnameparam
+            $SumTypes.constructor(::Type{$T_name}, ::Type{Val{$(QuoteNode(nt.name))}}) = $(nt.store_type_uninit)
+            $SumTypes.constructor(::Type{$T_nameparam}, ::Type{Val{$(QuoteNode(nt.name))}}) where {$(T_params...)} = $(nt.store_type)
         end
         push!(ex.args, cons)
     end
