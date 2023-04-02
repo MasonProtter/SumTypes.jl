@@ -216,7 +216,8 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
         end
     end
     unique!(x -> x[1], converts)
-    append!(out.args, converts)
+    append!(out.args, map(x -> x[2], converts))
+
     out
 end
 
