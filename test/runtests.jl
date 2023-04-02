@@ -1,32 +1,16 @@
 using Test, SumTypes
-#-------------------
+
+
 @sum_type Foo begin
     Bar(::Int)
-    Baz(::Float64)
+    Baz(x)
 end
-#-------------------
+
 @sum_type Either{A, B} begin
     Left{A}(::A)
     Right{B}(::B)
 end
-#-------------------
-@sum_type List{A, L} begin 
-    Nil
-    Cons{A, L}(::A, ::L) 
-end
 
-List(first, rest...) = Cons(first, List(rest...))
-List() = Nil
-
-function Base.Tuple(l::List)
-    @cases l begin
-        Nil => ()
-        Cons(a, b) => (a, Tuple(b)...)
-    end 
-end 
-function Base.show(io::IO, l::List)
-    print(io, "List", Tuple(l))
-end
 #-------------------
 @testset "Basics  " begin
     @test SumTypes.is_sumtype(Int) == false
@@ -66,29 +50,92 @@ end
     
     @test_throws ErrorException either_test_overcomplete(Left(1))
 
-    @test_throws Exception macroexpand(@__MODULE__(), :(@cases x begin
-        Left{Int}(x) => x
-        Right(x) => x
-    end))
-    
-    
-    @test_throws ErrorException either_test_overcomplete(Left(1))
+    @test_throws Exception macroexpand(@__MODULE__(),
+                                       :(@cases x begin
+                                             Left{Int}(x) => x
+                                             Right(x) => x
+                                         end))
 
+    @test_throws Exception macroexpand(@__MODULE__(),
+                                       :(@sum_type Blah begin
+                                             duplicate_field
+                                             duplicate_field
+                                         end))
+
+    
+    @test_throws Exception macroexpand(@__MODULE__(),
+                                       :(@sum_type Blah begin
+                                             duplicate_field
+                                             duplicate_field
+                                         end some_option=false))
+    
     let x = Left([1]), y = Left([1.0]), z = Right([1])
         @test x == y
         @test x != z
     end
+    @test SumTypes.get_tag_sym(Left([1])) == :Left
     
     @test_throws MethodError Left{Int}("hi")
     @test_throws MethodError Right{String}(1)
     @test Left{Int}(0x01) === Left{Int}(1)
-
-    @test Nil isa List{Uninit, Uninit}
-    @test Cons(1, Cons(1, Nil)) isa List{Int, List{Int, List{Uninit, Uninit}}}
-    @test Tuple(List(1, 2, 3, 4, 5)) == (1, 2, 3, 4, 5)
 end
 
 #--------------------------------------------------------
+
+
+
+@sum_type List{A} begin 
+    Nil
+    Cons{A}(::A, ::List) 
+end
+Cons(x::A, y::List{Uninit}) where {A} = Cons(x, List{A}(y))
+
+List(first, rest...) = Cons(first, List(rest...))
+List() = Nil
+
+function Base.Tuple(l::List)
+    @cases l begin
+        Nil => ()
+        Cons(a, b) => (a, Tuple(b)...)
+    end 
+end
+Base.length(l::List) = @cases l begin
+    Nil => 0
+    Cons(_, l) => 1 + length(l)
+end
+function Base.collect(l::List{T}) where {T}
+    v = Vector{T}(undef, length(l))
+    for i ∈ eachindex(v)
+        l::List{T} = @cases l begin
+            Nil => error()
+            Cons(a, rest) => begin
+                v[i] = a
+                rest
+            end
+        end
+    end
+end 
+
+function collect_to!(v, l)
+    @cases l begin
+        Nil => v
+        Cons(a, b) => (push!(v, a); collect_to!(v, b))
+    end
+end
+
+function Base.show(io::IO, l::List)
+    print(io, "List", Tuple(l))
+end
+
+@testset "Recursive Sum Types" begin
+    @test Nil isa List{Uninit}
+    @test Cons(1, Cons(1, Nil)) isa List{Int}
+    @test Tuple(List(1, 2, 3, 4, 5)) == (1, 2, 3, 4, 5)
+end
+
+
+#--------------------------------------------------------
+
 @sum_type AT begin
     A(common_field::Int, a::Bool, b::Int)
     B(common_field::Int, a::Int, b::Float64, d::Complex)
@@ -160,6 +207,7 @@ end hide_variants = true
         A => 1
         B => 2
     end
+
 end
 
 
