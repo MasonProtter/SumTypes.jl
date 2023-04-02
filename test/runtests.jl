@@ -3,8 +3,9 @@ using Test, SumTypes
 
 @sum_type Foo begin
     Bar(::Int)
-    Baz(::Float64)
+    Baz(x)
 end
+
 @sum_type Either{A, B} begin
     Left{A}(::A)
     Right{B}(::B)
@@ -49,14 +50,25 @@ end
     
     @test_throws ErrorException either_test_overcomplete(Left(1))
 
-    @test_throws Exception macroexpand(@__MODULE__(), :(@cases x begin
-        Left{Int}(x) => x
-        Right(x) => x
-    end))
-    
-    
-    @test_throws ErrorException either_test_overcomplete(Left(1))
+    @test_throws Exception macroexpand(@__MODULE__(),
+                                       :(@cases x begin
+                                             Left{Int}(x) => x
+                                             Right(x) => x
+                                         end))
 
+    @test_throws Exception macroexpand(@__MODULE__(),
+                                       :(@sum_type Blah begin
+                                             duplicate_field
+                                             duplicate_field
+                                         end))
+
+    
+    @test_throws Exception macroexpand(@__MODULE__(),
+                                       :(@sum_type Blah begin
+                                             duplicate_field
+                                             duplicate_field
+                                         end some_option=false))
+    
     let x = Left([1]), y = Left([1.0]), z = Right([1])
         @test x == y
         @test x != z
@@ -194,6 +206,7 @@ end hide_variants = true
         A => 1
         B => 2
     end
+
 end
 
 
