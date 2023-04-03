@@ -56,18 +56,26 @@ end
                                              Right(x) => x
                                          end))
 
-    @test_throws Exception macroexpand(@__MODULE__(),
-                                       :(@sum_type Blah begin
-                                             duplicate_field
-                                             duplicate_field
-                                         end))
-
+    @test_throws Exception SumTypes._sum_type(
+        :Blah, :(begin
+                     duplicate_field
+                     duplicate_field
+                 end))
     
-    @test_throws Exception macroexpand(@__MODULE__(),
-                                       :(@sum_type Blah begin
-                                             duplicate_field
-                                             duplicate_field
-                                         end some_option=false))
+    @test_throws Exception SumTypes._sum_type(
+        :Blah, :(begin
+                     duplicate_field
+                 end), :(some_option=false))
+    
+    @test_throws Exception SumTypes._sum_type(
+        :Blah, :(begin
+                     x * field^2  -1 
+                 end))
+    
+    @test_throws Exception SumTypes._sum_type(
+        :(Blah{T}), :(begin
+                         foo{U}(::U)
+                     end ))
     
     let x = Left([1]), y = Left([1.0]), z = Right([1])
         @test x == y
@@ -78,6 +86,10 @@ end
     @test_throws MethodError Left{Int}("hi")
     @test_throws MethodError Right{String}(1)
     @test Left{Int}(0x01) === Left{Int}(1)
+
+    @test full_type(Either{Nothing, Nothing}) == Either{Nothing, Nothing, 0, 0}
+    @test full_type(Either{Int, Int}) == Either{Int, Int, 15, 0}
+    @test full_type(Either{Int, String}) == Either{Int, String, 8, 1}
 end
 
 #--------------------------------------------------------

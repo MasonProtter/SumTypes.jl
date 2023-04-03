@@ -58,7 +58,7 @@ macro cases(to_match, block)
     
     ex = :(if $get_tag($data) === $symbol_to_flag($Typ, $(QuoteNode(stmts[1].variant)));
                $(stmts[1].iscall ? :(($(stmts[1].fieldnames...),) =
-                   $getfield($data, $(QuoteNode(stmts[1].variant))) :: $constructor($Typ, $Val{$(QuoteNode(stmts[1].variant))}  )  ) : nothing);
+                   $unwrap($data, $constructor($Typ, $Val{$(QuoteNode(stmts[1].variant))}), $variants_Tuple($Typ))  ) : nothing);
                $(stmts[1].rhs)
            end)
     Base.remove_linenums!(ex)
@@ -67,7 +67,7 @@ macro cases(to_match, block)
     for i ∈ 2:length(stmts)
         _if = :(if $get_tag($data) === $symbol_to_flag($Typ, $(QuoteNode(stmts[i].variant)));
                     $(stmts[i].iscall ? :(($(stmts[i].fieldnames...),) =
-                        $getfield($data, $(QuoteNode(stmts[i].variant))) :: $constructor($Typ, $Val{$(QuoteNode(stmts[i].variant))}   )) : nothing);
+                        $unwrap($data, $constructor($Typ, $Val{$(QuoteNode(stmts[i].variant))}), $variants_Tuple($Typ))) : nothing);
                     $(stmts[i].rhs)
                 end)
         _if.head = :elseif
@@ -82,7 +82,6 @@ macro cases(to_match, block)
         let $data = $to_match
             $Typ = $typeof($data)
             $check_sum_type($Typ)
-            # $nt = $tags_flags_nt($Typ)
             $assert_exhaustive(Val{$tags($Typ)}, Val{$(Expr(:tuple, QuoteNode.(deparameterize.(variants))...))})
             $ex
         end
