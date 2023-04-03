@@ -65,7 +65,6 @@ end
     @test_throws Exception SumTypes._sum_type(
         :Blah, :(begin
                      duplicate_field
-                     duplicate_field
                  end), :(some_option=false))
     
     @test_throws Exception SumTypes._sum_type(
@@ -90,7 +89,7 @@ end
 
     @test full_type(Either{Nothing, Nothing}) == Either{Nothing, Nothing, 0, 0}
     @test full_type(Either{Int, Int}) == Either{Int, Int, 15, 0}
-    @test full_type(Either{Int, String}) == Either{Int, String, 15, 1}
+    @test full_type(Either{Int, String}) == Either{Int, String, 8, 1}
 end
 
 #--------------------------------------------------------

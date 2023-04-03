@@ -26,6 +26,7 @@ end
 end
 
 function extract_info(::Type{ST}, variants) where {ST}
+    
     data = map(variants) do variant
         (names, store_types) = variant.parameters
         bits = []
@@ -48,7 +49,12 @@ function extract_info(::Type{ST}, variants) where {ST}
     bit_names = map(v -> map(x -> x[1], v), bitss)
     bit_sigs  = map(v -> map(x -> x[2], v), bitss)
 
-    bit_size = maximum(v -> sizeof(Tuple{map(x -> x[2], v)..., fieldtype(ST, 3)}), bitss) - sizeof(fieldtype(ST, 3))
+    FT = fieldtype(ST, 3)
+    bit_size = if nptrs == 0
+        maximum(v -> sizeof(Tuple{map(x -> x[2], v)..., FT}), bitss) - sizeof(FT)
+    else
+        maximum(v -> sizeof(Tuple{map(x -> x[2], v)..., }), bitss) 
+    end
 
     (;
      bitss = bitss,
@@ -82,7 +88,7 @@ make(::Type{ST}, to_make, tag) where {ST} = make(ST, to_make, tag, variants_Tupl
         ST{bit_size, nptrs},
         :(unsafe_padded_reinterpret(NTuple{$bit_size, UInt8}, $bitvariant)),
         Expr(:tuple, ptr_args..., (nothing for _ ∈ 1:(nptrs-length(ptr_args)))...),
-        :tag
+        :tag,
     )
 end
 

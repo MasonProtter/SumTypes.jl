@@ -60,14 +60,11 @@ function generate_constructor_data(T_name, T_params, T_params_constrained, T_nam
             push!(constructors, nt)
         else
             con::Expr = con_
-            if con.head != :call
-                error("Malformed variant $con_")
-            end
+            con.head == :call || throw(ArgumentError("Malformed variant $con_"))
             con_name = con.args[1] isa Expr && con.args[1].head == :curly ? con.args[1].args[1] : con.args[1]
             con_params = (con.args[1] isa Expr && con.args[1].head == :curly) ? con.args[1].args[2:end] : []
-            if !issubset(con_params, T_params)
+            issubset(con_params, T_params) ||
                 error("constructor parameters ($con_params) for $con_name, not a subset of sum type parameters $T_params")
-            end
             con_params_uninit = let v = copy(con_params)
                 for i ∈ eachindex(T_params)
                     if T_params[i] ∉ con_params
@@ -88,9 +85,8 @@ function generate_constructor_data(T_name, T_params, T_params_constrained, T_nam
                     field.args[1]
                 end
             end
-            if unique(con_field_names) != con_field_names
-                error("constructor field names must be unique, got $(con_field_names) for constructor $con_name")
-            end
+            unique(con_field_names) == con_field_names || error("constructor field names must be unique, got $(con_field_names) for constructor $con_name")
+            
             con_field_types = map(con.args[2:end]) do field
                 @assert field isa Symbol || (field isa Expr && field.head == :(::)) "malformed constructor field $field"
                 if field isa Symbol
@@ -214,7 +210,7 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
     con_names        = (x -> x.name       ).(constructors)
     con_gnames       = (x -> x.gname      ).(constructors)
 
-    flagtype = length(constructors) < typemax(UInt8) ? UInt8 : length(constructors) < typemax(UInt16) ? UInt16 :
+    flagtype =  length(constructors) < typemax(UInt8) ? UInt8 : length(constructors) < typemax(UInt16) ? UInt16 :
         length(constructors) <= typemax(UInt32) ? UInt32 :
         error("Too many variants in SumType, got $(length(constructors)). The current maximum number is $(typemax(UInt32) |> Int)")
 
