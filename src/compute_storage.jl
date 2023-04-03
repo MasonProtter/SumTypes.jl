@@ -80,8 +80,8 @@ make(::Type{ST}, to_make, tag) where {ST} = make(ST, to_make, tag, variants_Tupl
     con = Expr(
         :new,
         ST{bit_size, nptrs},
-        Expr(:tuple, ptr_args..., (nothing for _ ∈ 1:(nptrs-length(ptr_args)))...),
         :(unsafe_padded_reinterpret(NTuple{$bit_size, UInt8}, $bitvariant)),
+        Expr(:tuple, ptr_args..., (nothing for _ ∈ 1:(nptrs-length(ptr_args)))...),
         :tag
     )
 end
