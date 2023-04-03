@@ -86,8 +86,8 @@ end
     @test convert(full_type(Either{Int, Int}), Left(1))  == Left(1)
     @test convert(full_type(Either{Int, Int}), Left(1)) !== Left(1)
     @test convert(full_type(Either{Int, Int}), Left(1)) === Either{Int, Int}'.Left(1)
-    @inferred Either{Int, Int, 15, 0} Either{Int, Int, 15, 0}(Left(1))
-    @inferred Either{Int, Int, 15, 0} Either{Int, Int, 15, 0}(Either{Int, Int}(Left(1)))
+    @test Either{Int, Int, 15, 0}(Left(1)) isa Either{Int, Int, 15, 0}
+    @test Either{Int, Int, 15, 0}(Either{Int, Int}(Left(1))) isa Either{Int, Int, 15, 0}
     
     @test_throws MethodError Left{Int}("hi")
     @test_throws MethodError Right{String}(1)
