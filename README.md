@@ -407,7 +407,6 @@ BenchmarkTools.Trial: 10000 samples with 1 evaluation.
                 ▁ ▂▂▅▇▆█▅▆▃▃                                    
   ▁▁▁▁▁▂▂▃▄▅▇▅▇▆█▇██████████▇▇▅▅▅▃▃▂▂▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
   53.1 μs         Histogram: frequency by time         55.8 μs <
-
  Memory estimate: 0 bytes, allocs estimate: 0.
 ```
 
@@ -472,7 +471,6 @@ BenchmarkTools.Trial: 10000 samples with 1 evaluation.
               ▁▁▅▄▄▅▅█▄▅▃▃▂                                     
   ▁▁▁▁▂▂▂▃▄▆▆███████████████▇▆▅▆▃▃▃▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
   54.2 μs         Histogram: frequency by time         56.7 μs <
-
  Memory estimate: 0 bytes, allocs estimate: 0.
 ```
 
