@@ -13,43 +13,44 @@
 <!-- <details> -->
 <!-- <summary>Click to expand</summary> -->
 
-A julian implementation of sum types. Sum types, sometimes called 'tagged unions' are the type system equivalent 
+Sum types, sometimes called 'tagged unions' are the type system equivalent 
 of the [disjoint union](https://en.wikipedia.org/wiki/Disjoint_union) operation (which is *not* a union in the 
-traditional sense). From a category theory perspective, sum types are interesting because they are *dual* to 
-`Tuple`s (whatever that means). In the 
-[Rust programming language](https://doc.rust-lang.org/book/ch06-00-enums.html), these are called "Enums".
+traditional sense). In the [Rust programming language](https://doc.rust-lang.org/book/ch06-00-enums.html), these
+are called "Enums", and they're more general than what Julia calls an 
+[enum](https://docs.julialang.org/en/v1/base/base/#Base.Enums.@enum).
 
 At the end of the day, a sum type is really just a fancy word for a container that can store data of a few 
 different, pre-declared types and is labelled by how it was instantiated.
 
 Users of statically typed programming languages often prefer Sum types to unions because it makes type checking 
 easier. In a dynamic language like julia, the benefit of these objects is less obvious, but there are cases where
-they're helpful.
+they're helpful, like performance sensitive branching on heterogeneous types, and enforcing the handling of cases.
 
-A common use-case for sum types is as a richer version of enums (enum in the 
-[julia sense](https://docs.julialang.org/en/v1/base/base/#Base.Enums.@enum), not in the Rust sense):
+The simplest version of a sum type is just a list of constant variants (i.e. basically a 
+[julia enum](https://docs.julialang.org/en/v1/base/base/#Base.Enums.@enum)):
 ```julia
 julia> @sum_type Fruit begin
-           Apple
-           Banana
-           Orange
+           apple
+           banana
+           orange
        end
 
-julia> Apple
-Apple::Fruit
+julia> apple
+apple::Fruit
 
-julia> Banana
-Banana::Fruit
+julia> banana
+banana::Fruit
 
-julia> Orange
-Orange::Fruit
+julia> orange
+brange::Fruit
 
-julia> typeof(Apple) == typeof(Banana) == typeof(Orange) == Fruit
+julia> typeof(apple) == typeof(banana) == typeof(orange) <: Fruit
 true
 ```
 
 But this isn't particularly interesting. More intesting is sum types which can **enclose data**. 
 Let's explore a very fundamental sum type (fundamental in the sense that all other sum types may be derived from it):
+
 ```julia
 julia> using SumTypes
 
@@ -99,9 +100,9 @@ This is particularly useful because in this case `foo` is
 ``` julia
 julia> Base.return_types(foo, Tuple{})
 1-element Vector{Any}:
- Either{Int64, Float64}
- 
-julia> isconcretetype(Either{Int, Float64})
+ Either{Int64, Float64, 15, 0}
+
+julia> isconcretetype(ans[1])
 true
 ```
 Note that unlike `Union{A, B}`, `A <: Either{A,B}` is false, and `Either{A, A}` is distinct from `A`.
@@ -146,6 +147,7 @@ ERROR: Inexhaustive @cases specification. Got cases (:Apple, :Orange), expected 
 ```
 
 Furthermore, `@cases` can *destructure* sum types which hold data:
+
 ``` julia
 julia> let x::Either{Int, Float64} = rand(Bool) ? Left(1) : Right(2.0)
            @cases x begin
@@ -169,7 +171,7 @@ The `@cases` macro still falls far short of a full on pattern matching system, l
 <summary>Click to expand</summary>
 
 SumTypes.jl generates structs with a compactified memory layout which is computed on demand for parametric types. Because of this, 
-every SumTypes actually has two extra type parameters related to its memory layout. This means that for instance, `Either{Int, Int}`:
+every SumTypes actually has two extra type parameters related to its memory layout. This means that for instance, with `Either{Int, Int}`:
 
 ``` julia
 julia> @sum_type Either{A, B} begin
@@ -181,11 +183,11 @@ julia> isconcretetype(Either{Int, Int})
 false
 ```
 
-In order to get the proper, concrete type corresponding to `Either{Int, Int}`, one can just use the `full_type` function exported by SumTypes.jl:
+In order to get the proper, concrete type corresponding to `Either{Int, Int}`, one can use the `full_type` function exported by SumTypes.jl:
 
 ``` julia
 julia> full_type(Either{Int, Int})
-Either{Int64, Int64, 8, 0}
+Either{Int64, Int64, 15, 0}
 
 julia> full_type(Either{Int, String})
 Either{Int64, String, 8, 1}
@@ -207,13 +209,13 @@ Avoiding these extra parameters would require https://github.com/JuliaLang/julia
 <details>
 <summary>Click to expand</summary>
 
-A common complaint about Enums and Sum Types is that sometimes they can contribute to clutter in the namespace. If you want to avoid having all the variants being available as top-level constant variables, then you can use the `hide_variants=true` option:
+A common complaint about Enums and Sum Types is that sometimes they can contribute to clutter in the namespace. If you want to avoid having all the variants being available as top-level constant variables, then you can use the `:hidden` option:
 
 ``` julia
-julia> @sum_type Foo{T} begin
+julia> @sum_type Foo{T} :hidden begin
            A
            B{T}(::T)
-       end hide_variants=true
+       end
 
 julia> A
 ERROR: UndefVarError: A not defined
@@ -398,13 +400,13 @@ end
 
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  54.890 μs …  73.650 μs  ┊ GC (min … max): 0.00% … 0.00%
- Time  (median):     55.750 μs               ┊ GC (median):    0.00%
- Time  (mean ± σ):   55.908 μs ± 655.652 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+ Range (min … max):  53.120 μs …  64.690 μs  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     54.070 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   54.093 μs ± 425.595 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
 
-          ▁▄▇██▇▆▅▄ ▂▁                                          
-  ▁▁▁▁▂▃▄▇████████████▇▆▅▄▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
-  54.9 μs         Histogram: frequency by time         58.4 μs <
+                ▁ ▂▂▅▇▆█▅▆▃▃                                    
+  ▁▁▁▁▁▂▂▃▄▅▇▅▇▆█▇██████████▇▇▅▅▅▃▃▂▂▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
+  53.1 μs         Histogram: frequency by time         55.8 μs <
 
  Memory estimate: 0 bytes, allocs estimate: 0.
 ```
@@ -463,13 +465,13 @@ end
 
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  54.470 μs …  67.920 μs  ┊ GC (min … max): 0.00% … 0.00%
- Time  (median):     55.640 μs               ┊ GC (median):    0.00%
- Time  (mean ± σ):   55.692 μs ± 498.787 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+ Range (min … max):  54.220 μs …  76.000 μs  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     55.030 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   55.073 μs ± 466.103 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
 
-                 ▁▂▄▅▆▆▇▇▇█▅▅▃▂▂                                
-  ▁▁▁▁▁▁▂▃▄▃▄▅▆▇▇████████████████▇▆▆▅▄▃▃▂▂▂▂▂▂▂▁▁▁▂▂▁▁▁▁▁▁▁▁▁▁ ▄
-  54.5 μs         Histogram: frequency by time         57.5 μs <
+              ▁▁▅▄▄▅▅█▄▅▃▃▂                                     
+  ▁▁▁▁▂▂▂▃▄▆▆███████████████▇▆▅▆▃▃▃▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
+  54.2 μs         Histogram: frequency by time         56.7 μs <
 
  Memory estimate: 0 bytes, allocs estimate: 0.
 ```
