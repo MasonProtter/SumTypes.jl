@@ -137,7 +137,7 @@ end
 function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
     out = Expr(:toplevel)
     converts = []
-    foreach(constructors) do nt
+    for nt ∈ constructors
         name = nt.name
         gname = nt.gname 
         params = nt.params
@@ -190,16 +190,27 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
         enumerate_constructors = collect(enumerate(constructors))
 
         if true
+            @gensym N M _tag _T x
+
+            if_nest_conv = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
+                :($_tag == $(i-1) ), :($make($T_init, $unwrap(x, $(nt.store_type)) , $_tag))
+            end
+            
             push!(converts, T_uninit => quote
-                      $Base.convert(::Type{$T_init}, x::$T_uninit) where {$(T_params...)} =
-                          $make($T_init, $unwrap(x), $getfield(x, $(QuoteNode(tag)) ))
-                      $T_init(x::$T_uninit) where {$(T_params...)} = $convert($T_init, x)
+                      $Base.convert(::$Type{$_T}, $x::$_T) where {$_T <: $T_name} = $x
+                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit) where {$(T_params...)} = let $_tag = $get_tag(x)
+                          $if_nest_conv
+                      end 
+                      (::$Type{<:$T_init})(x::$T_uninit) where {$(T_params...)} = $convert($T_init, x)
+                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit{$N, $M}) where {$(T_params...), $N, $M} = let $_tag = $get_tag(x)
+                          $if_nest_conv
+                      end 
+                      (::$Type{<:$_T})(x::$T_name) where {$_T <: $T_name} = $convert($_T, x)
                   end)
         end
     end
     unique!(x -> x[1], converts)
     append!(out.args, map(x -> x[2], converts))
-
     out
 end
 
@@ -228,11 +239,12 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
     end
 
     only_define_with_params = if !isempty(T_params)
+        @gensym x
         quote
             $SumTypes.constructors(::Type{<:$T_nameparam}) where {$(T_params...)} =
                 $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.store_type for nt ∈ constructors)...)))
             $Base.adjoint(::Type{<:$T_nameparam}) where {$(T_params...)} =
-                $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.value ? :($T_nameparam($(nt.gname))) : nt.gouter_type for nt ∈ constructors)...)))
+                $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.value ? :($T_nameparam($(nt.gname))) : :($Converter{$T_nameparam, $(nt.gouter_type)}()) for nt ∈ constructors)...)))
             $SumTypes.variants_Tuple(::Type{<:$T_nameparam}) where {$(T_params...)} =
                 $Tuple{$((nt.store_type for nt ∈ constructors)...)}
             $SumTypes.full_type(::Type{$T_name}) = $full_type($T_name{$(T_param_bounds...)}, $variants_Tuple($T_nameparam{$(T_param_bounds...)}))

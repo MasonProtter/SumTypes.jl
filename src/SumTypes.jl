@@ -57,6 +57,11 @@ function show_sumtype(io::IO, x::T) where {T}
     end
 end
 
+struct Converter{T, U} end
+(::Converter{T, U})(x) where {T, U} = convert(T, U(x))
+Base.show(io::IO, x::Converter{T, U}) where {T, U} = print(io, "$(T)'.$U")
+
+
 include("compute_storage.jl")
 include("sum_type.jl") # @sum_type defined here
 include("cases.jl")    # @cases    defined here
