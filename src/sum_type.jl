@@ -1,5 +1,9 @@
 
 macro sum_type(T, blk, _hide_variants=:(hide_variants = false))
+    esc(_sum_type(T, blk, _hide_variants))
+end
+
+function _sum_type(T, blk, _hide_variants=:(hide_variants = false))
     if _hide_variants isa Expr && _hide_variants.head == :(=) && _hide_variants.args[1] == :hide_variants
         hide_variants = _hide_variants.args[2]
     else
@@ -15,7 +19,7 @@ macro sum_type(T, blk, _hide_variants=:(hide_variants = false))
     T_nameparam = isempty(T_params) ? T : :($T_name{$(T_params...)})
     filter!(x -> !(x isa LineNumberNode), blk.args)
     
-    constructors = generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, hash(__module__), blk)
+    constructors = generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, blk)
     
     if !allunique(map(x -> x.name, constructors))
         error("constructors must have unique names, got $(map(x -> x.name, constructors))")
@@ -23,12 +27,12 @@ macro sum_type(T, blk, _hide_variants=:(hide_variants = false))
 
     con_expr = generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
     out = generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_param_bounds, T_nameparam, constructors)
-    Expr(:toplevel, out, con_expr) |> esc
+    Expr(:toplevel, out, con_expr) 
 end
 
 #------------------------------------------------------
 
-function generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, hsh, blk::Expr)
+function generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants,  blk::Expr)
     constructors = []
     for con_ ∈ blk.args
         con_ isa LineNumberNode && continue

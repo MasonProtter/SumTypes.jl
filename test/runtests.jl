@@ -56,29 +56,27 @@ end
                                              Right(x) => x
                                          end))
 
-    @test_throws Exception macroexpand(@__MODULE__(),
-                                       :(@sum_type Blah begin
-                                             duplicate_field
-                                             duplicate_field
-                                         end))
+    @test_throws Exception SumTypes._sum_type(
+        :Blah, :(begin
+                     duplicate_field
+                     duplicate_field
+                 end))
     
-    @test_throws Exception macroexpand(@__MODULE__(),
-                                       :(@sum_type Blah begin
-                                             duplicate_field
-                                             duplicate_field
-                                         end some_option=false))
-    @test_throws Exception macroexpand(@__MODULE__(),
-                                       :(@sum_type Blah begin
-                                             1 - duplicate_field ^ 2 + 1 / 2
-                                         end))
-    @test_throws Exception macroexpand(@__MODULE__(),
-                                       :(@sum_type Blah{T} begin
-                                             foo{U}(::U)
-                                         end ))
-    @test_throws Exception macroexpand(@__MODULE__(),
-                                       :(@sum_type Blah{T} begin
-                                             foo{U}(::U)
-                                         end ))
+    @test_throws Exception SumTypes._sum_type(
+        :Blah, :(begin
+                     duplicate_field
+                     duplicate_field
+                 end), :(some_option=false))
+    
+    @test_throws Exception SumTypes._sum_type(
+        :Blah, :(begin
+                     x * field^2  -1 
+                 end))
+    
+    @test_throws Exception SumTypes._sum_type(
+        :(Blah{T}), :(begin
+                         foo{U}(::U)
+                     end ))
     
     let x = Left([1]), y = Left([1.0]), z = Right([1])
         @test x == y
