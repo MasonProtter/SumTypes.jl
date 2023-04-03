@@ -210,18 +210,19 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
     con_names        = (x -> x.name       ).(constructors)
     con_gnames       = (x -> x.gname      ).(constructors)
 
-    flagtype = length(constructors) <= typemax(UInt8) ? UInt8 : length(constructors) < typemax(UInt16) ? UInt16 : length(constructors) <= typemax(UInt32) ? UInt32 :
+    flagtype = length(constructors) < typemax(UInt8) ? UInt8 : length(constructors) < typemax(UInt16) ? UInt16 :
+        length(constructors) <= typemax(UInt32) ? UInt32 :
         error("Too many variants in SumType, got $(length(constructors)). The current maximum number is $(typemax(UInt32) |> Int)")
-    
+
     N = Symbol("#N#")
     M = Symbol("#M#")
-    data_fields = [:(bits :: $NTuple{$N, $UInt8}), :(ptrs :: $NTuple{$M, $Any})]
+    data_fields = [:(bits :: $NTuple{$N, $UInt32}), :(ptrs :: $NTuple{$M, $Any})]
     T_full = T isa Expr && T.head == :curly ? Expr(:curly, T.args..., N, M) : Expr(:curly, T, N, M)
     sum_struct_def = Expr(:struct, false, T_full,
                           Expr(:block, :(bits :: $NTuple{$N, $UInt8}), :(ptrs :: $NTuple{$M, $Any}), :($tag :: $flagtype), :(1 + 1)))
     enumerate_constructors = collect(enumerate(constructors))
     if_nest_unwrap = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
-        :(tag == $i), :($unwrap(x, $(nt.store_type), $variants_Tuple($typeof(x)))) 
+        :(tag == $(flagtype(i-1))), :($unwrap(x, $(nt.store_type), $variants_Tuple($typeof(x)))) 
     end
 
     only_define_with_params = if !isempty(T_params)
@@ -244,11 +245,11 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
         
         $SumTypes.symbol_to_flag(::Type{<:$T_name}, sym::Symbol) =
             $(foldr(collect(enumerate(con_names)), init=:(error("Invalid tag symbol $sym"))) do (i, _sym), old
-                  Expr(:if, :(sym == $(QuoteNode(_sym))), flagtype(i), old)
+                  Expr(:if, :(sym == $(QuoteNode(_sym))), flagtype(i-1), old)
               end)
         $SumTypes.flag_to_symbol(::Type{<:$T_name}, flag::$flagtype) =
             $(foldr(collect(enumerate(con_names)), init=:(error("Invalid tag symbol $sym"))) do (i, sym), old
-                  Expr(:if, :(flag == $i), QuoteNode(sym), old)
+                  Expr(:if, :(flag == $(i-1)), QuoteNode(sym), old)
               end)
         $SumTypes.tags_flags_nt(::Type{<:$T_name}) = $(Expr(:tuple, Expr(:parameters, (Expr(:kw, name, flagtype(i)) for (i, name) ∈ enumerate(con_names))...)))
         $SumTypes.tags(::Type{<:$T_name}) = $(Expr(:tuple, map(x -> QuoteNode(x.name), constructors)...))

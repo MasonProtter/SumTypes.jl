@@ -25,7 +25,7 @@ end
     end
 end
 
-function extract_info(variants)
+function extract_info(::Type{ST}, variants) where {ST}
     data = map(variants) do variant
         (names, store_types) = variant.parameters
         bits = []
@@ -45,9 +45,11 @@ function extract_info(variants)
     ptrss = map(x -> x[2], data)
     nptrs = maximum(length, ptrss)
     ptr_names = map(v -> map(x -> x[1], v), ptrss)
-    bit_size = maximum(v -> sizeof(Tuple{map(x -> x[2], v)...}), bitss) 
     bit_names = map(v -> map(x -> x[1], v), bitss)
     bit_sigs  = map(v -> map(x -> x[2], v), bitss)
+
+    bit_size = maximum(v -> sizeof(Tuple{map(x -> x[2], v)..., fieldtype(ST, 3)}), bitss) - sizeof(fieldtype(ST, 3))
+
     (;
      bitss = bitss,
      ptrss = ptrss,
@@ -64,7 +66,7 @@ make(::Type{ST}, to_make, tag) where {ST} = make(ST, to_make, tag, variants_Tupl
 @generated function make(::Type{ST}, to_make::Var, tag, ::Type{var_Tuple}) where {ST, Var <: Variant, var_Tuple <: Tuple}
     variants = var_Tuple.parameters
     i = findfirst(==(Var), variants)
-    nt = extract_info(variants)
+    nt = extract_info(ST, variants)
 
     nptrs = nt.nptrs
     ptr_names = nt.ptr_names
@@ -90,7 +92,7 @@ unwrap(x::ST, var) where {ST} = unwrap(x, var, variants_Tuple(ST))
 @generated function unwrap(x::ST, ::Type{Var}, ::Type{var_Tuple}) where {ST, Var, var_Tuple}
     variants = var_Tuple.parameters
     i = findfirst(==(Var), variants)
-    nt = extract_info(variants)
+    nt = extract_info(ST, variants)
     ptrss = nt.ptrss
     nptrs = nt.nptrs
     ptr_names = nt.ptr_names
@@ -110,6 +112,6 @@ end
 
 Base.@generated function full_type(::Type{ST}, ::Type{var_Tuple}) where {ST, var_Tuple}
     variants = var_Tuple.parameters
-    nt = extract_info(variants)
+    nt = extract_info(ST, variants)
     :($ST{$(nt.bit_size), $(nt.nptrs)})
 end

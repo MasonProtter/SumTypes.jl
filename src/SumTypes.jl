@@ -41,7 +41,7 @@ Base.indexed_iterate(x::Variant, i::Int, state=1) = (Base.@_inline_meta; (getfie
 
 const tag = Symbol("#tag#")
 get_tag(x) = getfield(x, tag)
-get_tag_sym(x::T) where {T} = keys(tags_flags_nt(T))[Int(get_tag(x))]
+get_tag_sym(x::T) where {T} = keys(tags_flags_nt(T))[Int(get_tag(x)) + 1]
 
 show_sumtype(io::IO, m::MIME, x) = show_sumtype(io, x)
 function show_sumtype(io::IO, x::T) where {T}
