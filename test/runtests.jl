@@ -78,6 +78,10 @@ end
     @test_throws MethodError Left{Int}("hi")
     @test_throws MethodError Right{String}(1)
     @test Left{Int}(0x01) === Left{Int}(1)
+
+    @test full_type(Either{Nothing, Nothing}) == Either{Nothing, Nothing, 0, 0}
+    @test full_type(Either{Int, Int}) == Either{Int, Int, 15, 0}
+    @test full_type(Either{Int, String}) == Either{Int, String, 15, 1}
 end
 
 #--------------------------------------------------------

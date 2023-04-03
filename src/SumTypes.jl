@@ -33,8 +33,6 @@ struct Variant{fieldnames, Tup <: Tuple}
     Variant{fieldnames, Tup}(t::Tuple) where {fieldnames, Tup <: Tuple} = new{fieldnames, Tup}(t)
 end
 Base.:(==)(v1::Variant, v2::Variant) = v1.data == v2.data
-Base.NamedTuple(v::Variant{names, Tup}) where {names, Tup} = NamedTuple{names, Tup}(v.data)
-Variant(nt::NamedTuple{names, Tup}) where {names, Tup} = Variant{names, Tup}(Tuple(nt))
 
 Base.iterate(x::Variant, s = 1) = iterate(x.data, s)
 Base.indexed_iterate(x::Variant, i::Int, state=1) = (Base.@_inline_meta; (getfield(x.data, i), i+1))
