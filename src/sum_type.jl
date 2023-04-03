@@ -281,6 +281,7 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
             $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.gname  for nt ∈ constructors)...)))
 
         $SumTypes.full_type(::Type{$T_nameparam}) where {$(T_params...)} = $full_type($T_nameparam, $variants_Tuple($T_nameparam))
+        $SumTypes.full_type(::Type{$T_nameparam{$N, $M}}) where {$(T_params...), $N, $M} = $T_nameparam{$N, $M}
         
         $Base.show(io::IO, x::$T_name) = $show_sumtype(io, x)
         $Base.show(io::IO, m::MIME"text/plain", x::$T_name) = $show_sumtype(io, m, x)

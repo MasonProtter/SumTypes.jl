@@ -52,8 +52,9 @@ function show_sumtype(io::IO, x::T) where {T}
         print(io, String(sym), '(', join((repr(data) for data ∈ unwrap(x)), ", "), ")::", T_stripped)
     end
 end
-function T_string_stripped(::Type{T}) where {T}
-    @assert is_sumtype(T)
+function T_string_stripped(::Type{_T}) where {_T}
+    @assert is_sumtype(_T)
+    T = full_type(_T)
     T_stripped = if length(T.parameters) == 2
         String(T.name.name)
     else
