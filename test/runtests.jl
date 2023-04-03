@@ -63,9 +63,9 @@ end
                  end))
     
     @test_throws Exception SumTypes._sum_type(
-        :Blah, :(begin
+        :Blah, :some_option, :(begin
                      duplicate_field
-                 end), :(some_option=false))
+                 end))
     
     @test_throws Exception SumTypes._sum_type(
         :Blah, :(begin
@@ -181,15 +181,15 @@ end
 
 #--------------------------------------------------------
 
-@sum_type Hider{T} begin
+@sum_type Hider{T} :hidden begin
     A
     B{T}(::T)
-end hide_variants = true
+end
 
-@sum_type Hider2 begin
+@sum_type Hider2 :hidden begin
     A
     B
-end hide_variants = true
+end 
 
 @testset "hidden variants" begin
     @test Hider{Int}'.A isa Hider{Int}
@@ -224,10 +224,10 @@ end
 
 
 
-@sum_type Either2{A, B} begin
+@sum_type Either2{A, B} :hidden begin
     Left{A}(::A)
     Right{B}(::B)
-end hide_variants = true
+end
 
 SumTypes.show_sumtype(io::IO, x::Either2) = @cases x begin
     Left(a) => print(io, "L($a)")

@@ -1,13 +1,16 @@
 
-macro sum_type(T, blk, _hide_variants=:(hide_variants = false))
-    esc(_sum_type(T, blk, _hide_variants))
+macro sum_type(T, args...)
+    esc(_sum_type(T, args...))
 end
 
-function _sum_type(T, blk, _hide_variants=:(hide_variants = false))
-    if _hide_variants isa Expr && _hide_variants.head == :(=) && _hide_variants.args[1] == :hide_variants
-        hide_variants = _hide_variants.args[2]
+_sum_type(T, blk) = _sum_type(T, QuoteNode(:visible), blk)
+function _sum_type(T, hidden, blk)
+    if hidden == QuoteNode(:hidden)
+        hide_variants = true
+    elseif hidden == QuoteNode(:visible)
+        hide_variants = false
     else
-        error(ArgumentError("Invalid option $_hide_variants\nThe only current allowed option is hide_variants=true or hide_variants=false`"))
+        error(ArgumentError("Invalid option $hidden\nThe only currently allowed option is `:hidden` or `:visible`"))
     end
     
     @assert blk isa Expr && blk.head == :block
