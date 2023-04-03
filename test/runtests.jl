@@ -82,6 +82,12 @@ end
         @test x != z
     end
     @test SumTypes.get_tag_sym(Left([1])) == :Left
+
+    @test convert(full_type(Either{Int, Int}), Left(1))  == Left(1)
+    @test convert(full_type(Either{Int, Int}), Left(1)) !== Left(1)
+    @test convert(full_type(Either{Int, Int}), Left(1)) === Either{Int, Int}'.Left(1)
+    @test Either{Int, Int, 15, 0}(Left(1)) isa Either{Int, Int, 15, 0}
+    @test Either{Int, Int, 15, 0}(Either{Int, Int}(Left(1))) isa Either{Int, Int, 15, 0}
     
     @test_throws MethodError Left{Int}("hi")
     @test_throws MethodError Right{String}(1)
@@ -254,5 +260,6 @@ end
         @test repr(Right(3)) == "R(3)"
     end
     @test repr(apple) == "apple::Fruit"
+    @test repr(Either{Int, Int}'.Left) ∈ ("Either{Int64, Int64}'.Left{Int64}", "Either{Int64,Int64}'.Left{Int64}")
 end
 
