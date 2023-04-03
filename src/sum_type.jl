@@ -221,7 +221,7 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
                           Expr(:block, :(bits :: $NTuple{$N, $UInt8}), :(ptrs :: $NTuple{$M, $Any}), :($tag :: $flagtype), :(1 + 1)))
     enumerate_constructors = collect(enumerate(constructors))
     if_nest_unwrap = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
-        :(tag == $(flagtype(i-1))), :($unwrap(x, $(nt.store_type), $variants_Tuple($typeof(x)))) 
+        :(tag == $(flagtype(i-1))), :($unwrap(x, $(nt.store_type))) 
     end
 
     only_define_with_params = if !isempty(T_params)
