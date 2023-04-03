@@ -47,10 +47,15 @@ show_sumtype(io::IO, m::MIME, x) = show_sumtype(io, x)
 function show_sumtype(io::IO, x::T) where {T}
     tag = get_tag(x)
     sym = flag_to_symbol(T, tag)
-    if unwrap(x) isa Variant{(), Tuple{}}
-        print(io, String(sym), "::", strip_size_params(T))
+    T_stripped = if length(T.parameters) == 2
+        String(T.name.name)
     else
-        print(io, String(sym), '(', join((repr(data) for data ∈ unwrap(x)), ", "), ")::", strip_size_params(T))
+        string(String(T.name.name), "{", join(repr.(T.parameters[1:end-2]), ", "), "}")
+    end 
+    if unwrap(x) isa Variant{(), Tuple{}}
+        print(io, String(sym), "::", T_stripped)
+    else
+        print(io, String(sym), '(', join((repr(data) for data ∈ unwrap(x)), ", "), ")::", T_stripped)
     end
 end
 
