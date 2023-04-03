@@ -219,7 +219,7 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
     data_fields = [:(bits :: $NTuple{$N, $UInt32}), :(ptrs :: $NTuple{$M, $Any})]
     T_full = T isa Expr && T.head == :curly ? Expr(:curly, T.args..., N, M) : Expr(:curly, T, N, M)
     sum_struct_def = Expr(:struct, false, T_full,
-                          Expr(:block, :(bits :: $NTuple{$N, $UInt8}), :(ptrs :: $NTuple{$M, $Any}), :($tag :: $flagtype), :(1 + 1)))
+                          Expr(:block, :(ptrs :: $NTuple{$M, $Any}), :(bits :: $NTuple{$N, $UInt8}), :($tag :: $flagtype), :(1 + 1)))
     enumerate_constructors = collect(enumerate(constructors))
     if_nest_unwrap = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
         :(tag == $(flagtype(i-1))), :($unwrap(x, $(nt.store_type), $variants_Tuple($typeof(x)))) 
