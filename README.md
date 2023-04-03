@@ -162,6 +162,45 @@ The `@cases` macro still falls far short of a full on pattern matching system, l
 
 <!-- </details> -->
 
+## Using `full_type` to get the concrete type of a Sum Type
+
+<details>
+<summary>Click to expand</summary>
+
+SumTypes.jl generates structs with a compactified memory layout which is computed on demand for parametric types. Because of this, 
+every SumTypes actually has two extra type parameters related to its memory layout. This means that for instance, `Either{Int, Int}`:
+
+``` julia
+julia> @sum_type Either{A, B} begin
+           Left{A}(::A)
+           Right{B}(::B)
+       end
+
+julia> isconcretetype(Either{Int, Int})
+false
+```
+
+In order to get the proper, concrete type corresponding to `Either{Int, Int}`, one can just use the `full_type` function exported by SumTypes.jl:
+
+``` julia
+julia> full_type(Either{Int, Int})
+Either{Int64, Int64, 8, 0}
+
+julia> full_type(Either{Int, String})
+Either{Int64, String, 8, 1}
+
+julia> full_type(Either{Tuple{Int, Int, Int}, String})
+Either{Tuple{Int64, Int64, Int64}, String, 24, 1}
+
+julia> isconcretetype(ans)
+true
+```
+
+Avoiding these extra parameters would require https://github.com/JuliaLang/julia/issues/8472 to be implemented.
+
+</details>
+
+
 ## Avoiding namespace clutter
 
 <details>
@@ -307,15 +346,15 @@ end
 
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  393.061 μs …   6.725 ms  ┊ GC (min … max): 0.00% … 90.92%
- Time  (median):     434.257 μs               ┊ GC (median):    0.00%
- Time  (mean ± σ):   483.461 μs ± 435.758 μs  ┊ GC (mean ± σ):  9.38% ±  9.39%
+ Range (min … max):  267.399 μs …   3.118 ms  ┊ GC (min … max):  0.00% … 90.36%
+ Time  (median):     278.904 μs               ┊ GC (median):     0.00%
+ Time  (mean ± σ):   316.971 μs ± 306.290 μs  ┊ GC (mean ± σ):  11.68% ± 10.74%
 
-  █▅▃▁                                                          ▁
-  █████▆▆▃▃▁▁▃▁▁▁▁▁▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▄▃▅ █
-  393 μs        Histogram: log(frequency) by time        4.2 ms <
+  █                                                             ▁
+  █▆▄▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▇▇ █
+  267 μs        Histogram: log(frequency) by time       2.77 ms <
 
- Memory estimate: 654.16 KiB, allocs estimate: 21950.
+ Memory estimate: 654.75 KiB, allocs estimate: 21952.
 ```
 
 SumTypes.jl
@@ -358,13 +397,13 @@ end
 
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  61.309 μs …  83.300 μs  ┊ GC (min … max): 0.00% … 0.00%
- Time  (median):     62.350 μs               ┊ GC (median):    0.00%
- Time  (mean ± σ):   62.376 μs ± 528.152 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+ Range (min … max):  54.890 μs …  73.650 μs  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     55.750 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   55.908 μs ± 655.652 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
 
-                  ▃█▂       ▁▄▃▂                                
-  ▂▁▁▁▁▁▁▁▁▂▁▂▃▅▅▇███▆▄▃▃▄▄▇████▅▄▃▂▂▂▁▂▂▂▁▂▁▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂ ▃
-  61.3 μs         Histogram: frequency by time           64 μs <
+          ▁▄▇██▇▆▅▄ ▂▁                                          
+  ▁▁▁▁▂▃▄▇████████████▇▆▅▄▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
+  54.9 μs         Histogram: frequency by time         58.4 μs <
 
  Memory estimate: 0 bytes, allocs estimate: 0.
 ```
@@ -423,25 +462,24 @@ end
 
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  69.355 μs … 234.343 μs  ┊ GC (min … max): 0.00% … 0.00%
- Time  (median):     75.388 μs               ┊ GC (median):    0.00%
- Time  (mean ± σ):   77.753 μs ±  13.757 μs  ┊ GC (mean ± σ):  0.00% ± 0.00%
+ Range (min … max):  54.470 μs …  67.920 μs  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     55.640 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   55.692 μs ± 498.787 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
 
-  █▃▄▃▇▆▆▃▄      ▁                                             ▂
-  ██████████▇▇█▇▇█████▆▆▆▆▆▆▇▆▅▇▆▆▅▄▆▇▆▆▆▅▇▆▅▆▅▄▅▄▄▅▄▆▅▅▅▅▅▅▅▅ █
-  69.4 μs       Histogram: log(frequency) by time       149 μs <
+                 ▁▂▄▅▆▆▇▇▇█▅▅▃▂▂                                
+  ▁▁▁▁▁▁▂▃▄▃▄▅▆▇▇████████████████▇▆▆▅▄▃▃▂▂▂▂▂▂▂▁▁▁▂▂▁▁▁▁▁▁▁▁▁▁ ▄
+  54.5 μs         Histogram: frequency by time         57.5 μs <
 
  Memory estimate: 0 bytes, allocs estimate: 0.
 ```
 
-SumTypes.jl is able to slightly beat Unityper.jl in this benckmark, though there are cases where the roles are reversed. 
-SumTypes.jl has some other advantages relative to Unityper.jl too, such as:
-- SumTypes.jl allows [parametric types](https://docs.julialang.org/en/v1/manual/types/#Parametric-Types) for much greater container flexibility (Unityper does some memory layout optimizations that won't work with parametric types). 
-- SumTypes.jl does not require default values for every field of the struct
+SumTypes.jl and Unityper.jl are about equal in this benchmark, though there are cases where there are differences.
+SumTypes.jl has some other advantages relative to Unityper.jl such as:
+- SumTypes.jl allows [parametric types](https://docs.julialang.org/en/v1/manual/types/#Parametric-Types) for much greater container flexibility.
+- SumTypes.jl does not require default values for every field of the struct.
 - SumTypes.jl's `@cases` macro is more powerful and flexible than Unityper's `@compactified`.
 - SumTypes.jl allows you to hide its variants from the namespace (opt in).
 
-Whereas some advantages of Unityper.jl are:
-- A `@compactified` type from Unityper.jl will often have a smaller memory footprint than a corresponding type from SumTypes.jl
-- If we had used `D(;common_field=1, b="hi")` in our benchmarks, SumTypes.jl could have incurred an allocation whereas Unitypeper.jl would not. This allocation is due to the compiler heuristics involved in `::Union{T, Nothing}` fields of structs and may be fixed in future versions of julia.
+One advantage of Unityper.jl is:
+- Because Unityper.jl doesn't allow parameterized types and needs to know all type information at macroexpansion time, their structs have a fixed layout for boxed variables that lets them avoid an allocation when storing heap allocated objects (this allocation would be in addition to the heap allocation for the object itself). If we had used `D(;common_field=1, b="hi")` in our benchmarks, SumTypes.jl could have incurred an allocation whereas Unityper.jl would not. As far as I know, this would requre https://github.com/JuliaLang/julia/issues/8472 in order to avoid in SumTypes.jl
 

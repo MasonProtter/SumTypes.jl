@@ -1,6 +1,6 @@
 module SumTypes
 
-export @sum_type, @cases, Uninit
+export @sum_type, @cases, Uninit, full_type
 
 using MacroTools: MacroTools
 
@@ -8,6 +8,7 @@ function parent end
 function constructors end
 function constructor end 
 function constructors_Union end
+function variants_Tuple end
 function unwrap end
 function tags end
 function deparameterize end
@@ -16,6 +17,9 @@ function flagtype end
 function flag_to_symbol end
 function symbol_to_flag end
 function tags_flags_nt end
+function variants_Tuple end
+function strip_size_params end
+function full_type end
 
 
 struct Unsafe end
@@ -26,11 +30,11 @@ struct Uninit end
 struct Variant{fieldnames, Tup <: Tuple}
     data::Tup
     Variant{fieldnames, Tup}(::Unsafe) where {fieldnames, Tup} = new{fieldnames, Tup}()
-    # Variant(::Unsafe, nt::NamedTuple{names, Tup}) where {names, Tup} = new{fieldnames, Tup}(Tuple(nt))
-    # Variant{fieldnames}(t::Tup) where {fieldnames, Tup <: Tuple} = new{fieldnames, Tup}(t)
     Variant{fieldnames, Tup}(t::Tuple) where {fieldnames, Tup <: Tuple} = new{fieldnames, Tup}(t)
 end
 Base.:(==)(v1::Variant, v2::Variant) = v1.data == v2.data
+Base.NamedTuple(v::Variant{names, Tup}) where {names, Tup} = NamedTuple{names, Tup}(v.data)
+Variant(nt::NamedTuple{names, Tup}) where {names, Tup} = Variant{names, Tup}(Tuple(nt))
 
 Base.iterate(x::Variant, s = 1) = iterate(x.data, s)
 Base.indexed_iterate(x::Variant, i::Int, state=1) = (Base.@_inline_meta; (getfield(x.data, i), i+1))
@@ -43,14 +47,16 @@ show_sumtype(io::IO, m::MIME, x) = show_sumtype(io, x)
 function show_sumtype(io::IO, x::T) where {T}
     tag = get_tag(x)
     sym = flag_to_symbol(T, tag)
-    if getfield(x, sym) isa Variant{(), Tuple{}}
-        print(io, String(sym), "::", typeof(x))
+    if unwrap(x) isa Variant{(), Tuple{}}
+        print(io, String(sym), "::", strip_size_params(T))
     else
-        print(io, String(sym), '(', join((repr(data) for data ∈ getfield(x, sym)), ", "), ")::", typeof(x))
+        print(io, String(sym), '(', join((repr(data) for data ∈ unwrap(x)), ", "), ")::", strip_size_params(T))
     end
 end
 
+include("compute_storage.jl")
 include("sum_type.jl") # @sum_type defined here
 include("cases.jl")    # @cases    defined here
+
 
 end # module
