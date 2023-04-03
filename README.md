@@ -2,7 +2,7 @@
 
 - [Basics](https://github.com/MasonProtter/SumTypes.jl#basics)
 - [Destructuring sum types](https://github.com/MasonProtter/SumTypes.jl#destructuring-sum-types)
-- [Using `full_type` to get the concrete type of a Sum Type](https://github.com/MasonProtter/SumTypes.jl/tree/compute-storage#using-full_type-to-get-the-concrete-type-of-a-sum-type)
+- [Using `full_type` to get the concrete type of a Sum Type](https://github.com/MasonProtter/SumTypes.jl/#using-full_type-to-get-the-concrete-type-of-a-sum-type)
 - [Avoiding namespace clutter](https://github.com/MasonProtter/SumTypes.jl#avoiding-namespace-clutter)
 - [Custom printing](https://github.com/MasonProtter/SumTypes.jl#custom-printing)
 - [Performance](https://github.com/MasonProtter/SumTypes.jl#performance)
