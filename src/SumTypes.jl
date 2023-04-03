@@ -45,21 +45,26 @@ show_sumtype(io::IO, m::MIME, x) = show_sumtype(io, x)
 function show_sumtype(io::IO, x::T) where {T}
     tag = get_tag(x)
     sym = flag_to_symbol(T, tag)
-    T_stripped = if length(T.parameters) == 2
-        String(T.name.name)
-    else
-        string(String(T.name.name), "{", join(repr.(T.parameters[1:end-2]), ", "), "}")
-    end 
+    T_stripped = T_string_stripped(T)
     if unwrap(x) isa Variant{(), Tuple{}}
         print(io, String(sym), "::", T_stripped)
     else
         print(io, String(sym), '(', join((repr(data) for data ∈ unwrap(x)), ", "), ")::", T_stripped)
     end
 end
+function T_string_stripped(::Type{T}) where {T}
+    @assert is_sumtype(T)
+    T_stripped = if length(T.parameters) == 2
+        String(T.name.name)
+    else
+        string(String(T.name.name), "{", join(repr.(T.parameters[1:end-2]), ", "), "}")
+    end 
+end
+
 
 struct Converter{T, U} end
 (::Converter{T, U})(x) where {T, U} = convert(T, U(x))
-Base.show(io::IO, x::Converter{T, U}) where {T, U} = print(io, "$(T)'.$U")
+Base.show(io::IO, x::Converter{T, U}) where {T, U} = print(io, "$(T_string_stripped(T))'.$U")
 
 
 include("compute_storage.jl")
