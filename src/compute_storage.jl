@@ -25,8 +25,8 @@ end
     end
 end
 
-_rf_findmin((fm, im), (fx, ix)) = isless(fx, fm) ? (fx, ix) : (fm, im)
-_argmin(f, domain) = mapfoldl(x -> (f(x), x), _rf_findmin, domain)[2]
+_rf_findmax((fm, im), (fx, ix)) = isless(fm, fx) ? (fx, ix) : (fm, im)
+_argmax(f, domain) = mapfoldl(x -> (f(x), x), _rf_findmax, domain)[2]
 
 function extract_info(::Type{ST}, variants) where {ST}
     
@@ -61,11 +61,11 @@ function extract_info(::Type{ST}, variants) where {ST}
     
     FT = if nptrs == 0
         if bit_size <= 1
-            _argmin(sizeof, (_FT, UInt8))
+            _argmax(sizeof, (_FT, UInt8))
         elseif bit_size <= 2
-            _argmin(sizeof, (_FT, UInt16))
+            _argmax(sizeof, (_FT, UInt16))
         elseif bit_size <= 4
-            _argmin(sizeof, (_FT, UInt32))
+            _argmax(sizeof, (_FT, UInt32))
         else
             UInt
         end

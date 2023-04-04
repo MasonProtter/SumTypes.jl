@@ -111,6 +111,9 @@ end
     @test full_type(Either{Nothing, Nothing}) == Either{Nothing, Nothing, 0, 0, UInt8}
     @test full_type(Either{Int, Int}) == Either{Int, Int, 8, 0, UInt}
     @test full_type(Either{Int, String}) == Either{Int, String, 8, 1, UInt8}
+
+    @test full_type(Either{Nothing, Int16}) == Either{Nothing, Int16, 2, 0, UInt16}
+    @test full_type(Either{Int32, Int32}) == Either{Int32, Int32, 4, 0, UInt32}
 end
 
 #--------------------------------------------------------
