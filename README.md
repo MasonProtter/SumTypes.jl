@@ -95,7 +95,7 @@ julia> foo()
 Right(2.0)::Either{Int64, Float64}
 ```
 This is particularly useful because in this case `foo` is 
-[type stabe](https://docs.julialang.org/en/v1/manual/performance-tips/#Write-%22type-stable%22-functions)!
+[type stable](https://docs.julialang.org/en/v1/manual/performance-tips/#Write-%22type-stable%22-functions)!
 
 ``` julia
 julia> Base.return_types(foo, Tuple{})
