@@ -100,7 +100,7 @@ This is particularly useful because in this case `foo` is
 ``` julia
 julia> Base.return_types(foo, Tuple{})
 1-element Vector{Any}:
- Either{Int64, Float64, 15, 0}
+ Either{Int64, Float64, 8, 0, UInt64}
 
 julia> isconcretetype(ans[1])
 true
@@ -187,13 +187,13 @@ In order to get the proper, concrete type corresponding to `Either{Int, Int}`, o
 
 ``` julia
 julia> full_type(Either{Int, Int})
-Either{Int64, Int64, 15, 0}
+Either{Int64, Int64, 8, 0, UInt64}
 
 julia> full_type(Either{Int, String})
-Either{Int64, String, 8, 1}
+Either{Int64, String, 8, 1, UInt8}
 
 julia> full_type(Either{Tuple{Int, Int, Int}, String})
-Either{Tuple{Int64, Int64, Int64}, String, 24, 1}
+Either{Tuple{Int64, Int64, Int64}, String, 24, 1, UInt8}
 
 julia> isconcretetype(ans)
 true
@@ -400,13 +400,14 @@ end
 
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  53.120 μs …  64.690 μs  ┊ GC (min … max): 0.00% … 0.00%
- Time  (median):     54.070 μs               ┊ GC (median):    0.00%
- Time  (mean ± σ):   54.093 μs ± 425.595 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+ Range (min … max):  52.680 μs …  72.570 μs  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     53.590 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   53.718 μs ± 756.064 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
 
-                ▁ ▂▂▅▇▆█▅▆▃▃                                    
-  ▁▁▁▁▁▂▂▃▄▅▇▅▇▆█▇██████████▇▇▅▅▅▃▃▂▂▁▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
-  53.1 μs         Histogram: frequency by time         55.8 μs <
+        ▁▂▁▃▆▅█▇▅▅▃▁▁                                           
+  ▁▂▂▃▅▆██████████████▇▇▅▄▄▃▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
+  52.7 μs         Histogram: frequency by time         56.7 μs <
+
  Memory estimate: 0 bytes, allocs estimate: 0.
 ```
 
@@ -483,4 +484,3 @@ SumTypes.jl has some other advantages relative to Unityper.jl such as:
 
 One advantage of Unityper.jl is:
 - Because Unityper.jl doesn't allow parameterized types and needs to know all type information at macroexpansion time, their structs have a fixed layout for boxed variables that lets them avoid an allocation when storing heap allocated objects (this allocation would be in addition to the heap allocation for the object itself). If we had used `D(;common_field=1, b="hi")` in our benchmarks, SumTypes.jl could have incurred an allocation whereas Unityper.jl would not. As far as I know, this would requre https://github.com/JuliaLang/julia/issues/8472 in order to avoid in SumTypes.jl
-

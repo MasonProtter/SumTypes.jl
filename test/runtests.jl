@@ -11,6 +11,18 @@ end
     Right{B}(::B)
 end
 
+@sum_type Result{T} begin
+    Failure
+    Success{T}(::T)
+end
+
+function log_nothrow(x::T)::Result{T} where{T<:AbstractFloat}
+  if x < zero(x) 
+      return Failure
+  end
+  Success(log(x))
+end
+
 #-------------------
 @testset "Basics  " begin
     @test SumTypes.is_sumtype(Int) == false
@@ -50,6 +62,9 @@ end
     
     @test_throws ErrorException either_test_overcomplete(Left(1))
 
+    @test log_nothrow(1.0) == Success(0.0)
+    @test log_nothrow(-1.0) == Failure
+
     @test_throws Exception macroexpand(@__MODULE__(),
                                        :(@cases x begin
                                              Left{Int}(x) => x
@@ -86,16 +101,19 @@ end
     @test convert(full_type(Either{Int, Int}), Left(1))  == Left(1)
     @test convert(full_type(Either{Int, Int}), Left(1)) !== Left(1)
     @test convert(full_type(Either{Int, Int}), Left(1)) === Either{Int, Int}'.Left(1)
-    @test Either{Int, Int, 15, 0}(Left(1)) isa Either{Int, Int, 15, 0}
-    @test Either{Int, Int, 15, 0}(Either{Int, Int}(Left(1))) isa Either{Int, Int, 15, 0}
+    @test Either{Int, Int, 8, 0, UInt}(Left(1)) isa Either{Int, Int, 8, 0, UInt}
+    @test Either{Int, Int, 8, 0, UInt}(Either{Int, Int}(Left(1))) isa Either{Int, Int, 8, 0, UInt}
     
     @test_throws MethodError Left{Int}("hi")
     @test_throws MethodError Right{String}(1)
     @test Left{Int}(0x01) === Left{Int}(1)
 
-    @test full_type(Either{Nothing, Nothing}) == Either{Nothing, Nothing, 0, 0}
-    @test full_type(Either{Int, Int}) == Either{Int, Int, 15, 0}
-    @test full_type(Either{Int, String}) == Either{Int, String, 8, 1}
+    @test full_type(Either{Nothing, Nothing}) == Either{Nothing, Nothing, 0, 0, UInt8}
+    @test full_type(Either{Int, Int}) == Either{Int, Int, 8, 0, UInt}
+    @test full_type(Either{Int, String}) == Either{Int, String, 8, 1, UInt8}
+
+    @test full_type(Either{Nothing, Int16}) == Either{Nothing, Int16, 2, 0, UInt16}
+    @test full_type(Either{Int32, Int32}) == Either{Int32, Int32, 4, 0, UInt32}
 end
 
 #--------------------------------------------------------

@@ -129,6 +129,8 @@ function generate_constructor_data(T_name, T_params, T_params_constrained, T_nam
             push!(constructors, nt)
         end
     end
+    length(constructors) > typemax(UInt32) &&
+        error("Too many variants in SumType, got $(length(constructors)). The current maximum number is $(typemax(UInt32) |> Int)")
     constructors
 end
 
@@ -190,22 +192,22 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
         enumerate_constructors = collect(enumerate(constructors))
 
         if true
-            @gensym N M _tag _T x
+            @gensym N M FT _tag _T x 
 
-            if_nest_conv = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
-                :($_tag == $(i-1) ), :($make($T_init, $unwrap(x, $(nt.store_type)) , $_tag))
-            end
+            if_nest_conv = :(
+                let $_tag = $get_tag(x)
+                    $(mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
+                          :($_tag == $(i-1) ), :($make($T_init, $unwrap(x, $(nt.store_type)) , $_tag))
+                      end)
+                end)
             
             push!(converts, T_uninit => quote
                       $Base.convert(::$Type{$_T}, $x::$_T) where {$_T <: $T_name} = $x
-                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit) where {$(T_params...)} = let $_tag = $get_tag(x)
-                          $if_nest_conv
-                      end 
-                      (::$Type{<:$T_init})(x::$T_uninit) where {$(T_params...)} = $convert($T_init, x)
-                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit{$N, $M}) where {$(T_params...), $N, $M} = let $_tag = $get_tag(x)
-                          $if_nest_conv
-                      end 
-                      (::$Type{<:$_T})(x::$T_name) where {$_T <: $T_name} = $convert($_T, x)
+                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit) where {$(T_params...)} = $if_nest_conv 
+                      (::$Type{<:$T_init})(x::$T_uninit) where {$(T_params...)} = $if_nest_conv
+                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit{$N, $M, $FT}) where {$(T_params...), $N, $M, $FT} = $if_nest_conv 
+                      $Base.convert(::$Type{$T_init}, x::$T_uninit{$N, $M, $FT}) where {$(T_params...), $N, $M, $FT} = $if_nest_conv
+                      (::$Type{$_T})(x::$T_name) where {$_T <: $T_name} = $convert($_T, x)
                   end)
         end
     end
@@ -224,18 +226,17 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
     con_names        = (x -> x.name       ).(constructors)
     con_gnames       = (x -> x.gname      ).(constructors)
 
-    flagtype =  length(constructors) < typemax(UInt8) ? UInt8 : length(constructors) < typemax(UInt16) ? UInt16 :
-        length(constructors) <= typemax(UInt32) ? UInt32 :
-        error("Too many variants in SumType, got $(length(constructors)). The current maximum number is $(typemax(UInt32) |> Int)")
-
     N = Symbol("#N#")
     M = Symbol("#M#")
-    T_full = T isa Expr && T.head == :curly ? Expr(:curly, T.args..., N, M) : Expr(:curly, T, N, M)
+    FT = Symbol("#FT#")
+    T_full = T isa Expr && T.head == :curly ? Expr(:curly, T.args..., N, M, FT) : Expr(:curly, T, N, M, FT)
     sum_struct_def = Expr(:struct, false, T_full,
-                          Expr(:block, :(bits :: $NTuple{$N, $UInt8}), :(ptrs :: $NTuple{$M, $Any}), :($tag :: $flagtype), :(1 + 1)))
+                          Expr(:block, :(bits :: $NTuple{$N, $UInt8}), :(ptrs :: $NTuple{$M, $Any}), :($tag :: $FT), :(1 + 1)))
+    
     enumerate_constructors = collect(enumerate(constructors))
+    
     if_nest_unwrap = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
-        :(tag == $(flagtype(i-1))), :($unwrap(x, $(nt.store_type))) 
+        :(tag == $FT($(i-1))), :($unwrap(x, $(nt.store_type))) 
     end
 
     only_define_with_params = if !isempty(T_params)
@@ -244,28 +245,34 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
             $SumTypes.constructors(::Type{<:$T_nameparam}) where {$(T_params...)} =
                 $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.store_type for nt ∈ constructors)...)))
             $Base.adjoint(::Type{<:$T_nameparam}) where {$(T_params...)} =
-                $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.value ? :($T_nameparam($(nt.gname))) : :($Converter{$T_nameparam, $(nt.gouter_type)}()) for nt ∈ constructors)...)))
+                $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.value ? :($T_nameparam($(nt.gname))) : :($Converter{$T_nameparam, $(nt.gouter_type)}())
+                                                            for nt ∈ constructors)...)))
             $SumTypes.variants_Tuple(::Type{<:$T_nameparam}) where {$(T_params...)} =
                 $Tuple{$((nt.store_type for nt ∈ constructors)...)}
-            $SumTypes.full_type(::Type{$T_name}) = $full_type($T_name{$(T_param_bounds...)}, $variants_Tuple($T_nameparam{$(T_param_bounds...)}))
+            $SumTypes.full_type(::Type{$T_name}) = $full_type($T_name{$(T_param_bounds...)}, $variants_Tuple($T_name{$(T_param_bounds...)}))
         end
     end
+    # @show only_define_with_params
 
+    @gensym _T
+    
     ex = quote
         $sum_struct_def
         $SumTypes.is_sumtype(::Type{<:$T_name}) = true
-        $SumTypes.strip_size_params(::Type{$T_name{$(T_params...), $N, $M}}) where {$(T_params...), $N, $M} = $T_nameparam
-        $SumTypes.flagtype(::Type{<:$T_name}) = $flagtype
+        $SumTypes.strip_size_params(::Type{$T_name{$(T_params...), $N, $M, $FT}}) where {$(T_params...), $N, $M, $FT} = $T_nameparam
+        $SumTypes.flagtype(::Type{$_T}) where {$_T <: $T_name} = $flagtype(full_type($_T))
+        $SumTypes.flagtype(::Type{$T_name{$(T_params...), $N, $M, $FT}}) where {$(T_params...), $N, $M, $FT} = $FT
         
-        $SumTypes.symbol_to_flag(::Type{<:$T_name}, sym::Symbol) =
+        $SumTypes.symbol_to_flag(::Type{$_T}, sym::Symbol) where {$_T <: $T_name} =
             $(foldr(collect(enumerate(con_names)), init=:(error("Invalid tag symbol $sym"))) do (i, _sym), old
-                  Expr(:if, :(sym == $(QuoteNode(_sym))), flagtype(i-1), old)
+                  Expr(:if, :(sym == $(QuoteNode(_sym))), :($flagtype($_T)($(i-1))), old)
               end)
-        $SumTypes.flag_to_symbol(::Type{<:$T_name}, flag::$flagtype) =
+        $SumTypes.flag_to_symbol(::Type{<:$T_name}, flag::$Integer) =
             $(foldr(collect(enumerate(con_names)), init=:(error("Invalid tag symbol $sym"))) do (i, sym), old
                   Expr(:if, :(flag == $(i-1)), QuoteNode(sym), old)
               end)
-        $SumTypes.tags_flags_nt(::Type{<:$T_name}) = $(Expr(:tuple, Expr(:parameters, (Expr(:kw, name, flagtype(i)) for (i, name) ∈ enumerate(con_names))...)))
+        $SumTypes.tags_flags_nt(::Type{<:$_T}) where {$_T <: $T_name} =
+            $(Expr(:tuple, Expr(:parameters, (Expr(:kw, name, :($flagtype($_T)($(i-1)))) for (i, name) ∈ enumerate(con_names))...)))
         $SumTypes.tags(::Type{<:$T_name}) = $(Expr(:tuple, map(x -> QuoteNode(x.name), constructors)...))
         
         $SumTypes.constructors(::Type{<:$T_name}) =
@@ -274,20 +281,20 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
         $SumTypes.variants_Tuple(::Type{<:$T_name}) =
             $Tuple{$((nt.store_type_uninit for nt ∈ constructors)...)}
         
-        $SumTypes.unwrap(x::$T_nameparam) where {$(T_params...)}= let tag = $get_tag(x)
+        $SumTypes.unwrap(x::$T_nameparam{$N, $M, $FT}) where {$(T_params...), $N, $M, $FT}= let tag = $get_tag(x)
             $if_nest_unwrap
         end
         $Base.adjoint(::Type{<:$T_name}) =
             $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.gname  for nt ∈ constructors)...)))
 
         $SumTypes.full_type(::Type{$T_nameparam}) where {$(T_params...)} = $full_type($T_nameparam, $variants_Tuple($T_nameparam))
-        $SumTypes.full_type(::Type{$T_nameparam{$N, $M}}) where {$(T_params...), $N, $M} = $T_nameparam{$N, $M}
+        $SumTypes.full_type(::Type{$T_nameparam{$N, $M, $FT}}) where {$(T_params...), $N, $M, $FT} = $T_nameparam{$N, $M, $FT}
         
         $Base.show(io::IO, x::$T_name) = $show_sumtype(io, x)
         $Base.show(io::IO, m::MIME"text/plain", x::$T_name) = $show_sumtype(io, m, x)
 
         Base.:(==)(x::$T_name, y::$T_name) = ($get_tag(x) == $get_tag(y)) && ($unwrap(x) == $unwrap(y))
-        $only_define_with_params 
+        $only_define_with_params
     end
     foreach(constructors) do nt
         con1 = :($SumTypes.constructor(::Type{<:$T_name}, ::Type{Val{$(QuoteNode(nt.name))}}) = $(nt.store_type_uninit))

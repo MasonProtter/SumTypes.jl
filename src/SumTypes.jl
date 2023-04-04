@@ -55,10 +55,10 @@ end
 function T_string_stripped(::Type{_T}) where {_T}
     @assert is_sumtype(_T)
     T = full_type(_T)
-    T_stripped = if length(T.parameters) == 2
+    T_stripped = if length(T.parameters) == 3
         String(T.name.name)
     else
-        string(String(T.name.name), "{", join(repr.(T.parameters[1:end-2]), ", "), "}")
+        string(String(T.name.name), "{", join(repr.(T.parameters[1:end-3]), ", "), "}")
     end 
 end
 
