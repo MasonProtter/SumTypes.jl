@@ -202,7 +202,7 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
                 end)
             
             push!(converts, T_uninit => quote
-                      $Base.convert(::$Type{$_T}, $x::$_T) where {$_T <: $T_name} = $x
+                      $Base.convert(::$Type{$_T}, $x::$_T) where {$(T_params...), $_T <: $T_nameparam} = $x
                       $Base.convert(::$Type{<:$T_init}, x::$T_uninit) where {$(T_params...)} = $if_nest_conv 
                       (::$Type{<:$T_init})(x::$T_uninit) where {$(T_params...)} = $if_nest_conv
                       $Base.convert(::$Type{<:$T_init}, x::$T_uninit{$N, $M, $FT}) where {$(T_params...), $N, $M, $FT} = $if_nest_conv 
