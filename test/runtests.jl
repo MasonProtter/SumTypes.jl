@@ -11,6 +11,18 @@ end
     Right{B}(::B)
 end
 
+@sum_type Result{T} begin
+    Failure
+    Success{T}(::T)
+end
+
+function log_nothrow(x::T)::Result{T} where{T<:AbstractFloat}
+  if x < zero(x) 
+      return Failure
+  end
+  Success(log(x))
+end
+
 #-------------------
 @testset "Basics  " begin
     @test SumTypes.is_sumtype(Int) == false
@@ -49,6 +61,9 @@ end
     end
     
     @test_throws ErrorException either_test_overcomplete(Left(1))
+
+    @test log_nothrow(1.0) == Success(0.0)
+    @test log_nothrow(-1.0) == Failure
 
     @test_throws Exception macroexpand(@__MODULE__(),
                                        :(@cases x begin

@@ -192,19 +192,19 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
         if true
             @gensym N M _tag _T x
 
-            if_nest_conv = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
-                :($_tag == $(i-1) ), :($make($T_init, $unwrap(x, $(nt.store_type)) , $_tag))
-            end
+            if_nest_conv = :(
+                let $_tag = $get_tag(x)
+                    $(mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
+                          :($_tag == $(i-1) ), :($make($T_init, $unwrap(x, $(nt.store_type)) , $_tag))
+                      end)
+                end)
             
             push!(converts, T_uninit => quote
                       $Base.convert(::$Type{$_T}, $x::$_T) where {$_T <: $T_name} = $x
-                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit) where {$(T_params...)} = let $_tag = $get_tag(x)
-                          $if_nest_conv
-                      end 
-                      (::$Type{<:$T_init})(x::$T_uninit) where {$(T_params...)} = $convert($T_init, x)
-                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit{$N, $M}) where {$(T_params...), $N, $M} = let $_tag = $get_tag(x)
-                          $if_nest_conv
-                      end 
+                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit) where {$(T_params...)} = $if_nest_conv 
+                      (::$Type{<:$T_init})(x::$T_uninit) where {$(T_params...)} = $if_nest_conv
+                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit{$N, $M}) where {$(T_params...), $N, $M} = $if_nest_conv 
+                      $Base.convert(::$Type{$T_init}, x::$T_uninit{$N, $M}) where {$(T_params...), $N, $M} = $if_nest_conv
                       (::$Type{<:$_T})(x::$T_name) where {$_T <: $T_name} = $convert($_T, x)
                   end)
         end
