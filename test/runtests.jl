@@ -101,16 +101,16 @@ end
     @test convert(full_type(Either{Int, Int}), Left(1))  == Left(1)
     @test convert(full_type(Either{Int, Int}), Left(1)) !== Left(1)
     @test convert(full_type(Either{Int, Int}), Left(1)) === Either{Int, Int}'.Left(1)
-    @test Either{Int, Int, 15, 0}(Left(1)) isa Either{Int, Int, 15, 0}
-    @test Either{Int, Int, 15, 0}(Either{Int, Int}(Left(1))) isa Either{Int, Int, 15, 0}
+    @test Either{Int, Int, 8, 0, UInt}(Left(1)) isa Either{Int, Int, 8, 0, UInt}
+    @test Either{Int, Int, 8, 0, UInt}(Either{Int, Int}(Left(1))) isa Either{Int, Int, 8, 0, UInt}
     
     @test_throws MethodError Left{Int}("hi")
     @test_throws MethodError Right{String}(1)
     @test Left{Int}(0x01) === Left{Int}(1)
 
-    @test full_type(Either{Nothing, Nothing}) == Either{Nothing, Nothing, 0, 0}
-    @test full_type(Either{Int, Int}) == Either{Int, Int, 15, 0}
-    @test full_type(Either{Int, String}) == Either{Int, String, 8, 1}
+    @test full_type(Either{Nothing, Nothing}) == Either{Nothing, Nothing, 0, 0, UInt8}
+    @test full_type(Either{Int, Int}) == Either{Int, Int, 8, 0, UInt}
+    @test full_type(Either{Int, String}) == Either{Int, String, 8, 1, UInt8}
 end
 
 #--------------------------------------------------------

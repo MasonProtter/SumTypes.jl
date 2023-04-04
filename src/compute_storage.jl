@@ -50,10 +50,24 @@ function extract_info(::Type{ST}, variants) where {ST}
     bit_sigs  = map(v -> map(x -> x[2], v), bitss)
 
     FT = fieldtype(ST, 3)
-    bit_size = if nptrs == 0
-        maximum(v -> sizeof(Tuple{map(x -> x[2], v)..., FT}), bitss) - sizeof(FT)
+    bit_size = maximum(v -> sizeof(Tuple{map(x -> x[2], v)..., }), bitss)
+
+    _FT = length(variants) < typemax(UInt8) ? UInt8 : length(variants) < typemax(UInt16) ? UInt16 :
+        length(variants) <= typemax(UInt32) ? UInt32 :
+        error("Too many variants in SumType, got $(length(variants)). The current maximum number is $(typemax(UInt32) |> Int)")
+    
+    FT = if nptrs == 0
+        if bit_size <= 1
+            argmin(sizeof, (_FT, UInt8))
+        elseif bit_size <= 2
+            argmin(sizeof, (_FT, UInt16))
+        elseif bit_size <= 4
+            argmin(sizeof, (_FT, UInt32))
+        else
+            UInt
+        end
     else
-        maximum(v -> sizeof(Tuple{map(x -> x[2], v)..., }), bitss) 
+        _FT
     end
 
     (;
@@ -64,6 +78,7 @@ function extract_info(::Type{ST}, variants) where {ST}
      bit_size = bit_size,
      bit_names = bit_names,
      bit_sigs  = bit_sigs,
+     flagtype = FT
      )
 end
 
@@ -79,16 +94,17 @@ make(::Type{ST}, to_make, tag) where {ST} = make(ST, to_make, tag, variants_Tupl
     bit_size = nt.bit_size
     bit_names = nt.bit_names
     bit_sigs  = nt.bit_sigs
+    FT = nt.flagtype
 
     bitvariant = :(SumTypes.Variant{($(QuoteNode.(bit_names[i])...),), Tuple{$(bit_sigs[i]...)}}(
         ($(([bit_sigs[i][j] == PlaceHolder ? PlaceHolder() : :(to_make.data[$j]) for j ∈ eachindex(bit_sigs[i])  ])...),) ))
     ptr_args = [:(to_make.data[$j]) for j ∈ eachindex(bit_names[i]) if bit_names[i][j] ∈ ptr_names[i]]
     con = Expr(
         :new,
-        ST{bit_size, nptrs},
+        ST{bit_size, nptrs, FT},
         :(unsafe_padded_reinterpret(NTuple{$bit_size, UInt8}, $bitvariant)),
         Expr(:tuple, ptr_args..., (nothing for _ ∈ 1:(nptrs-length(ptr_args)))...),
-        :tag,
+        :($FT(tag)),
     )
 end
 
@@ -119,5 +135,5 @@ end
 Base.@generated function full_type(::Type{ST}, ::Type{var_Tuple}) where {ST, var_Tuple}
     variants = var_Tuple.parameters
     nt = extract_info(ST, variants)
-    :($ST{$(nt.bit_size), $(nt.nptrs)})
+    :($ST{$(nt.bit_size), $(nt.nptrs), $(nt.flagtype)})
 end
