@@ -55,9 +55,7 @@ function extract_info(::Type{ST}, variants) where {ST}
     FT = fieldtype(ST, 3)
     bit_size = maximum(v -> sizeof(Tuple{map(x -> x[2], v)..., }), bitss)
 
-    _FT = length(variants) < typemax(UInt8) ? UInt8 : length(variants) < typemax(UInt16) ? UInt16 :
-        length(variants) <= typemax(UInt32) ? UInt32 :
-        error("Too many variants in SumType, got $(length(variants)). The current maximum number is $(typemax(UInt32) |> Int)")
+    _FT = length(variants) < typemax(UInt8) ? UInt8 : length(variants) < typemax(UInt16) ? UInt16 : UInt32
     
     FT = if nptrs == 0
         if bit_size <= 1
@@ -110,8 +108,6 @@ make(::Type{ST}, to_make, tag) where {ST} = make(ST, to_make, tag, variants_Tupl
         :($FT(tag)),
     )
 end
-
-
 
 unwrap(x::ST, var) where {ST} = unwrap(x, var, variants_Tuple(ST))
 @generated function unwrap(x::ST, ::Type{Var}, ::Type{var_Tuple}) where {ST, Var, var_Tuple}
