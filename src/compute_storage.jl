@@ -9,7 +9,7 @@ macro assume_effects(args...)
     esc(ex)
 end
 
-@assume_effects :consistent :foldable function unsafe_padded_reinterpret(::Type{T}, x::U) where {T, U}
+@assume_effects :foldable function unsafe_padded_reinterpret(::Type{T}, x::U) where {T, U}
     @assert isbitstype(T) && isbitstype(U)
     n, m = sizeof(T), sizeof(U)
     if sizeof(U) < sizeof(T)

@@ -139,6 +139,16 @@ end
 function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
     out = Expr(:toplevel)
     converts = []
+
+    @gensym N M FT _tag _T x 
+    enumerate_constructors = collect(enumerate(constructors))
+    if_nest_conv = :(
+        let $_tag = $get_tag($x)
+            $(mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
+                  :($_tag == $(i-1) ), :($make($T_nameparam, $unwrap($x, $(nt.store_type)) , $_tag))
+              end)
+        end)
+    
     for nt ∈ constructors
         name = nt.name
         gname = nt.gname 
@@ -189,33 +199,23 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
             end
             push!(out.args, ex)
         end
-        enumerate_constructors = collect(enumerate(constructors))
-
-        if true
-            @gensym N M FT _tag _T x 
-
-            if_nest_conv = :(
-                let $_tag = $get_tag(x)
-                    $(mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
-                          :($_tag == $(i-1) ), :($make($T_init, $unwrap(x, $(nt.store_type)) , $_tag))
-                      end)
-                end)
-            
+        if true          
             push!(converts, T_uninit => quote
-                      $Base.convert(::$Type{$_T}, $x::$_T) where {$(T_params...), $_T <: $T_nameparam} = $x
-                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit) where {$(T_params...)} = $if_nest_conv 
-                      (::$Type{<:$T_init})(x::$T_uninit) where {$(T_params...)} = $if_nest_conv
-                      $Base.convert(::$Type{<:$T_init}, x::$T_uninit{$N, $M, $FT}) where {$(T_params...), $N, $M, $FT} = $if_nest_conv 
-                      $Base.convert(::$Type{$T_init}, x::$T_uninit{$N, $M, $FT}) where {$(T_params...), $N, $M, $FT} = $if_nest_conv
-                      (::$Type{$_T})(x::$T_name) where {$_T <: $T_name} = $convert($_T, x)
+                      $Base.convert(::$Type{<:$T_init}, $x::$T_uninit) where {$(T_params...)} = $if_nest_conv 
+                      (::$Type{<:$T_init})($x::$T_uninit) where {$(T_params...)} = $if_nest_conv
+                      $Base.convert(::$Type{$T_init}, $x::$T_uninit{$N, $M, $FT}) where {$(T_params...), $N, $M, $FT} = $if_nest_conv
+                      (::$Type{$T_init})($x::$T_uninit) where {$(T_params...)} = $if_nest_conv
                   end)
         end
     end
     unique!(x -> x[1], converts)
     append!(out.args, map(x -> x[2], converts))
+    push!(out.args, quote
+              $Base.convert(::$Type{$_T}, $x::$_T) where {$(T_params...), $_T <: $T_nameparam} = $x
+              (::$Type{$_T})($x::$_T) where {$(T_params...), $_T <: $T_nameparam} = $x
+          end)
     out
 end
-
 
 
 #------------------------------------------------------
