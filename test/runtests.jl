@@ -119,6 +119,32 @@ end
 
 #--------------------------------------------------------
 
+function pass_through(x::Either{T, U})::Either{T, U} where {T, U}
+    @cases x begin
+        Left(l) => Left(l)
+        Right(r) => Right(r)
+    end
+end
+
+@testset "search for memory safety problems from lying about consistency" begin
+    data = (rand(Int8), rand(Int16), rand(Int32), rand(Int64), rand(Int128),
+            (rand(Int8), rand(Int)), (rand(Int), rand(Int8)), (rand(Int8), rand(Int32), rand(Int)), "hi", (rand(Int8), "hi"))
+    for x ∈ data
+        T = typeof(x)
+        for y ∈ data
+            U = typeof(y) 
+            L = Either{T, U}'.Left(x)
+            R = Either{T, U}'.Right(y)
+            @test L == pass_through(L)
+            @test R == pass_through(R)
+            
+            @test L == @eval pass_through($L)
+            @test R == @eval pass_through($R)
+        end
+    end
+end
+
+#--------------------------------------------------------
 
 
 @sum_type List{A} begin 

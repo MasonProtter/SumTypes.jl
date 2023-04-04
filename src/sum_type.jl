@@ -204,6 +204,7 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
                       $Base.convert(::$Type{<:$T_init}, $x::$T_uninit) where {$(T_params...)} = $if_nest_conv 
                       (::$Type{<:$T_init})($x::$T_uninit) where {$(T_params...)} = $if_nest_conv
                       $Base.convert(::$Type{$T_init}, $x::$T_uninit{$N, $M, $FT}) where {$(T_params...), $N, $M, $FT} = $if_nest_conv
+                      (::$Type{$T_init})($x::$T_uninit) where {$(T_params...)} = $if_nest_conv
                   end)
         end
     end
@@ -215,7 +216,6 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
           end)
     out
 end
-
 
 
 #------------------------------------------------------
