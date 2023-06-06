@@ -260,7 +260,7 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
         $sum_struct_def
         $SumTypes.is_sumtype(::Type{<:$T_name}) = true
         $SumTypes.strip_size_params(::Type{$T_name{$(T_params...), $N, $M, $FT}}) where {$(T_params...), $N, $M, $FT} = $T_nameparam
-        $SumTypes.flagtype(::Type{$_T}) where {$_T <: $T_name} = $flagtype(full_type($_T))
+        $SumTypes.flagtype(::Type{$_T}) where {$_T <: $T_name} = $flagtype($full_type($_T))
         $SumTypes.flagtype(::Type{$T_name{$(T_params...), $N, $M, $FT}}) where {$(T_params...), $N, $M, $FT} = $FT
         
         $SumTypes.symbol_to_flag(::Type{$_T}, sym::Symbol) where {$_T <: $T_name} =
