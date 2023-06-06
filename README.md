@@ -124,14 +124,14 @@ Orange::Fruit
 julia> @cases myfruit begin
            Apple => "Got an apple!"
            Orange => "Got an orange!"
-           Banana => throw(error("I'm allergic to bananas!"))
+           Banana => error("I'm allergic to bananas!")
        end
 "Got an orange!"
 
 julia> @cases Banana begin
            Apple => "Got an apple!"
            Orange => "Got an orange!"
-           Banana => throw(error("I'm allergic to bananas!"))
+           Banana => error("I'm allergic to bananas!")
        end
 ERROR: I'm allergic to bananas!
 [...]
