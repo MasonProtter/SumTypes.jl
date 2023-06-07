@@ -201,18 +201,18 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
         end
         if true          
             push!(converts, T_uninit => quote
-                      $Base.convert(::$Type{<:$T_init}, $x::$T_uninit) where {$(T_params...)} = $if_nest_conv 
-                      (::$Type{<:$T_init})($x::$T_uninit) where {$(T_params...)} = $if_nest_conv
-                      $Base.convert(::$Type{$T_init}, $x::$T_uninit{$N, $M, $FT}) where {$(T_params...), $N, $M, $FT} = $if_nest_conv
-                      (::$Type{$T_init})($x::$T_uninit) where {$(T_params...)} = $if_nest_conv
+                      $Base.convert(::$Type{<:$T_init}, $x::$T_uninit) where {$(T_params_constrained...)} = $if_nest_conv 
+                      (::$Type{<:$T_init})($x::$T_uninit) where {$(T_params_constrained...)} = $if_nest_conv
+                      $Base.convert(::$Type{$T_init}, $x::$T_uninit{$N, $M, $FT}) where {$(T_params_constrained...), $N, $M, $FT} = $if_nest_conv
+                      (::$Type{$T_init})($x::$T_uninit) where {$(T_params_constrained...)} = $if_nest_conv
                   end)
         end
     end
     unique!(x -> x[1], converts)
     append!(out.args, map(x -> x[2], converts))
     push!(out.args, quote
-              $Base.convert(::$Type{$_T}, $x::$_T) where {$(T_params...), $_T <: $T_nameparam} = $x
-              (::$Type{$_T})($x::$_T) where {$(T_params...), $_T <: $T_nameparam} = $x
+              $Base.convert(::$Type{$_T}, $x::$_T) where {$(T_params_constrained...), $_T <: $T_nameparam} = $x
+              (::$Type{$_T})($x::$_T) where {$(T_params_constrained...), $_T <: $T_nameparam} = $x
           end)
     out
 end
@@ -242,12 +242,12 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
     only_define_with_params = if !isempty(T_params)
         @gensym x
         quote
-            $SumTypes.constructors(::Type{<:$T_nameparam}) where {$(T_params...)} =
+            $SumTypes.constructors(::Type{<:$T_nameparam}) where {$(T_params_constrained...)} =
                 $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.store_type for nt ∈ constructors)...)))
-            $Base.adjoint(::Type{<:$T_nameparam}) where {$(T_params...)} =
+            $Base.adjoint(::Type{<:$T_nameparam}) where {$(T_params_constrained...)} =
                 $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.value ? :($T_nameparam($(nt.gname))) : :($Converter{$T_nameparam, $(nt.gouter_type)}())
                                                             for nt ∈ constructors)...)))
-            $SumTypes.variants_Tuple(::Type{<:$T_nameparam}) where {$(T_params...)} =
+            $SumTypes.variants_Tuple(::Type{<:$T_nameparam}) where {$(T_params_constrained...)} =
                 $Tuple{$((nt.store_type for nt ∈ constructors)...)}
             $SumTypes.full_type(::Type{$T_name}) = $full_type($T_name{$(T_param_bounds...)}, $variants_Tuple($T_name{$(T_param_bounds...)}))
         end
@@ -259,9 +259,9 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
     ex = quote
         $sum_struct_def
         $SumTypes.is_sumtype(::Type{<:$T_name}) = true
-        $SumTypes.strip_size_params(::Type{$T_name{$(T_params...), $N, $M, $FT}}) where {$(T_params...), $N, $M, $FT} = $T_nameparam
+        $SumTypes.strip_size_params(::Type{$T_name{$(T_params...), $N, $M, $FT}}) where {$(T_params_constrained...), $N, $M, $FT} = $T_nameparam
         $SumTypes.flagtype(::Type{$_T}) where {$_T <: $T_name} = $flagtype($full_type($_T))
-        $SumTypes.flagtype(::Type{$T_name{$(T_params...), $N, $M, $FT}}) where {$(T_params...), $N, $M, $FT} = $FT
+        $SumTypes.flagtype(::Type{$T_name{$(T_params...), $N, $M, $FT}}) where {$(T_params_constrained...), $N, $M, $FT} = $FT
         
         $SumTypes.symbol_to_flag(::Type{$_T}, sym::Symbol) where {$_T <: $T_name} =
             $(foldr(collect(enumerate(con_names)), init=:(error("Invalid tag symbol $sym"))) do (i, _sym), old
@@ -281,14 +281,14 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
         $SumTypes.variants_Tuple(::Type{<:$T_name}) =
             $Tuple{$((nt.store_type_uninit for nt ∈ constructors)...)}
         
-        $SumTypes.unwrap(x::$T_nameparam{$N, $M, $FT}) where {$(T_params...), $N, $M, $FT}= let tag = $get_tag(x)
+        $SumTypes.unwrap(x::$T_nameparam{$N, $M, $FT}) where {$(T_params_constrained...), $N, $M, $FT}= let tag = $get_tag(x)
             $if_nest_unwrap
         end
         $Base.adjoint(::Type{<:$T_name}) =
             $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.gname  for nt ∈ constructors)...)))
 
-        $SumTypes.full_type(::Type{$T_nameparam}) where {$(T_params...)} = $full_type($T_nameparam, $variants_Tuple($T_nameparam))
-        $SumTypes.full_type(::Type{$T_nameparam{$N, $M, $FT}}) where {$(T_params...), $N, $M, $FT} = $T_nameparam{$N, $M, $FT}
+        $SumTypes.full_type(::Type{$T_nameparam}) where {$(T_params_constrained...)} = $full_type($T_nameparam, $variants_Tuple($T_nameparam))
+        $SumTypes.full_type(::Type{$T_nameparam{$N, $M, $FT}}) where {$(T_params_constrained...), $N, $M, $FT} = $T_nameparam{$N, $M, $FT}
         
         $Base.show(io::IO, x::$T_name) = $show_sumtype(io, x)
         $Base.show(io::IO, m::MIME"text/plain", x::$T_name) = $show_sumtype(io, m, x)
@@ -299,9 +299,10 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
     foreach(constructors) do nt
         con1 = :($SumTypes.constructor(::Type{<:$T_name}, ::Type{Val{$(QuoteNode(nt.name))}}) = $(nt.store_type_uninit))
         con2 = if !isempty(T_params)
-            :($SumTypes.constructor(::Type{<:$T_nameparam}, ::Type{Val{$(QuoteNode(nt.name))}}) where {$(T_params...)} = $(nt.store_type))
+            :($SumTypes.constructor(::Type{<:$T_nameparam}, ::Type{Val{$(QuoteNode(nt.name))}}) where {$(T_params_constrained...)} = $(nt.store_type))
         end 
         push!(ex.args, con1, con2)
     end
     ex
 end
+

@@ -11,7 +11,7 @@ end
     Right{B}(::B)
 end
 
-@sum_type Result{T} begin
+@sum_type Result{T <: Union{Number, Uninit}} begin
     Failure
     Success{T}(::T)
 end
@@ -314,3 +314,14 @@ end
     @test repr(Either{Int, Int}'.Left) ∈ ("Either{Int64, Int64}'.Left{Int64}", "Either{Int64,Int64}'.Left{Int64}")
 end
 
+#---------------
+# https://github.com/MasonProtter/SumTypes.jl/issues/38
+struct Singleton end
+@testset "Constrained type parameters" begin
+    @sum_type FooWrapper{T<:Singleton} begin
+        FooWrapper1{T}(::T)
+        FooWrapper2{T}(::T)
+        FooWrapper3{T}(::T)
+    end
+    @test FooWrapper2(Singleton()) isa FooWrapper{Singleton}
+end
