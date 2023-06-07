@@ -21,6 +21,22 @@ function variants_Tuple end
 function strip_size_params end
 function full_type end
 
+"""
+    isvariant(x::SumType, s::Symbol)
+
+For an `x` which was created as a `@sum_type`, check if it's variant tag is `s`. e.g.
+
+    @sum_type Either{L, R} begin
+        Left{L}(::L)
+        Right{R}(::R)
+    end
+
+    let x::Either{Int, Int} = Left(1)
+        isvariant(x, :Left)  # true
+        isvariant(x, :Right) # false
+    end
+"""
+isvariant(x::T, s::Symbol) where {T} = get_tag(x) == symbol_to_flag(T, s)
 
 struct Unsafe end
 const unsafe = Unsafe()
@@ -36,6 +52,7 @@ Base.:(==)(v1::Variant, v2::Variant) = v1.data == v2.data
 
 Base.iterate(x::Variant, s = 1) = iterate(x.data, s)
 Base.indexed_iterate(x::Variant, i::Int, state=1) = (Base.@_inline_meta; (getfield(x.data, i), i+1))
+Base.getindex(x::Variant, i) = x.data[i]
 
 const tag = Symbol("#tag#")
 get_tag(x) = getfield(x, tag)
