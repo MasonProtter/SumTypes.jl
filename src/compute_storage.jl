@@ -109,6 +109,11 @@ make(::Type{ST}, to_make, tag) where {ST} = make(ST, to_make, tag, variants_Tupl
     )
 end
 
+
+function unwrap(x::ST, s::Symbol) where {ST}
+    isvariant(x, s) || error("Incorrect tag used in unwrap")
+    unwrap(x, constructor(ST, Val{s}), variants_Tuple(ST))
+end
 unwrap(x::ST, var) where {ST} = unwrap(x, var, variants_Tuple(ST))
 @generated function unwrap(x::ST, ::Type{Var}, ::Type{var_Tuple}) where {ST, Var, var_Tuple}
     variants = var_Tuple.parameters

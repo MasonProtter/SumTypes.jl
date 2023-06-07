@@ -115,6 +115,12 @@ end
     @test full_type(Either{Nothing, Int16}) == Either{Nothing, Int16, 2, 0, UInt16}
     @test full_type(Either{Int32, Int32}) == Either{Int32, Int32, 4, 0, UInt32}
     @test convert(full_type(Result{Float64}), Success(1.0)) == Success(1.0)
+
+    let x = Left(1.0)
+        @test SumTypes.isvariant(x, :Left) == true
+        @test SumTypes.isvariant(x, :Right) == false
+        @test SumTypes.unwrap(x, :Left)[1] == 1.0
+    end
 end
 
 #--------------------------------------------------------

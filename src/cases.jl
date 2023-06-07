@@ -56,7 +56,7 @@ macro cases(to_match, block)
     @gensym nt
     variants = map(x -> x.variant, stmts)
     
-    ex = :(if $get_tag($data) === $symbol_to_flag($Typ, $(QuoteNode(stmts[1].variant)));
+    ex = :(if $isvariant($data, $(QuoteNode(stmts[1].variant)));
                $(stmts[1].iscall ? :(($(stmts[1].fieldnames...),) =
                    $unwrap($data, $constructor($Typ, $Val{$(QuoteNode(stmts[1].variant))}), $variants_Tuple($Typ))  ) : nothing);
                $(stmts[1].rhs)
@@ -65,7 +65,7 @@ macro cases(to_match, block)
     pushfirst!(ex.args[2].args, lnns[1])
     to_push = ex.args
     for i ∈ 2:length(stmts)
-        _if = :(if $get_tag($data) === $symbol_to_flag($Typ, $(QuoteNode(stmts[i].variant)));
+        _if = :(if $isvariant($data, $(QuoteNode(stmts[i].variant)));
                     $(stmts[i].iscall ? :(($(stmts[i].fieldnames...),) =
                         $unwrap($data, $constructor($Typ, $Val{$(QuoteNode(stmts[i].variant))}), $variants_Tuple($Typ))) : nothing);
                     $(stmts[i].rhs)
@@ -87,4 +87,3 @@ macro cases(to_match, block)
         end
     end |> esc
 end
-
