@@ -3,6 +3,7 @@ module SumTypes
 export @sum_type, @cases, Uninit, full_type
 
 using MacroTools: MacroTools
+using Base: isexpr
 
 function parent end
 function constructors end
