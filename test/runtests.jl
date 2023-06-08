@@ -71,6 +71,11 @@ end
                                              Right(x) => x
                                          end))
 
+    @test_throws Exception macroexpand(@__MODULE__(),
+                                       :(@cases x begin
+                                             [Left, (Right + 1)](x) => x
+                                         end))
+
     @test_throws Exception SumTypes._sum_type(
         :Blah, :(begin
                      duplicate_field
