@@ -3,7 +3,6 @@ module SumTypes
 export @sum_type, @cases, Uninit, full_type
 
 using MacroTools: MacroTools
-using Base: isexpr
 
 function parent end
 function constructors end
@@ -21,6 +20,8 @@ function tags_flags_nt end
 function variants_Tuple end
 function strip_size_params end
 function full_type end
+
+isexpr(x, head) = x isa Expr && x.head == head
 
 """
     isvariant(x::SumType, s::Symbol)
