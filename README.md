@@ -169,7 +169,7 @@ The `@cases` macro still falls far short of a full on pattern matching system, l
 
 ``` julia
 @sum_type Re begin
-	Empty
+    Empty
     Class(::UInt8)
     Rep(::Re)
     Alt(::Re, ::Re)
@@ -178,23 +178,23 @@ The `@cases` macro still falls far short of a full on pattern matching system, l
     And(::Re, ::Re)
 end;
 
-isempty(x::Re) = @cases x begin
-	Empty => true
-	[Class, Rep, Alt, Cat, Diff, And] => false
+isEmpty(x::Re) = @cases x begin
+    Empty => true
+    [Class, Rep, Alt, Cat, Diff, And] => false
 end
 ```
 
 This is the same as if one had manually written out
 
 ``` julia
-isempty(r::Re) = @cases r begin
-	Empty => true
-	Class => false
-	Rep => false
-	Alt => false
-	Cat => false
-	Diff => false
-	And => false
+isEmpty(r::Re) = @cases r begin
+    Empty => true
+    Class => false
+    Rep => false
+    Alt => false
+    Cat => false
+    Diff => false
+    And => false
 end
 ```
 
@@ -205,7 +205,7 @@ count_classes(r::Re, c=0) = @cases r begin
     Empty => c
     Class => c + 1
     Rep(x) => c + count_classes(x)
-    [Alt, Cat, Diff, And](x, y)  => c + count_classes(x) + count_classes(y)
+   [Alt, Cat, Diff, And](x, y)  => c + count_classes(x) + count_classes(y)
 end;
 ```
 
