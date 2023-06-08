@@ -21,6 +21,8 @@ function variants_Tuple end
 function strip_size_params end
 function full_type end
 
+isexpr(x, head) = x isa Expr && x.head == head
+
 """
     isvariant(x::SumType, s::Symbol)
 

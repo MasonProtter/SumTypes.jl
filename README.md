@@ -163,6 +163,52 @@ bound it do the variable `l` and added `1.0` to `l`, whereas if it was a `Right`
 
 The `@cases` macro still falls far short of a full on pattern matching system, lacking many features. For anything advanced, I'd recommend using `@match` from [MLStyle.jl](https://github.com/thautwarm/MLStyle.jl).
 
+### Defining many repretitive cases simultaneously 
+
+`@cases` does not allow for fallback branches, and it also does not allow one to write inexhaustive cases. To avoid making some code overly verbose and repetitive, we instead provide syntax for defining many cases in one line:
+
+``` julia
+@sum_type Re begin
+    Empty
+    Class(::UInt8)
+    Rep(::Re)
+    Alt(::Re, ::Re)
+    Cat(::Re, ::Re)
+    Diff(::Re, ::Re)
+    And(::Re, ::Re)
+end;
+
+isEmpty(x::Re) = @cases x begin
+    Empty => true
+    [Class, Rep, Alt, Cat, Diff, And] => false
+end
+```
+
+This is the same as if one had manually written out
+
+``` julia
+isEmpty(r::Re) = @cases r begin
+    Empty => true
+    Class => false
+    Rep => false
+    Alt => false
+    Cat => false
+    Diff => false
+    And => false
+end
+```
+
+You can also destructure repeated cases with the `[]` syntax:
+
+``` julia
+count_classes(r::Re, c=0) = @cases r begin
+    Empty => c
+    Class => c + 1
+    Rep(x) => c + count_classes(x)
+   [Alt, Cat, Diff, And](x, y)  => c + count_classes(x) + count_classes(y)
+end;
+```
+
 <!-- </details> -->
 
 ## Using `full_type` to get the concrete type of a Sum Type

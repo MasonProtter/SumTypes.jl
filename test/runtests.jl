@@ -71,6 +71,11 @@ end
                                              Right(x) => x
                                          end))
 
+    @test_throws Exception macroexpand(@__MODULE__(),
+                                       :(@cases x begin
+                                             [Left, (Right + 1)](x) => x
+                                         end))
+
     @test_throws Exception SumTypes._sum_type(
         :Blah, :(begin
                      duplicate_field
@@ -324,4 +329,53 @@ struct Singleton end
         FooWrapper3{T}(::T)
     end
     @test FooWrapper2(Singleton()) isa FooWrapper{Singleton}
+end
+
+#---------------
+
+module CollectionOfVaraints
+
+using SumTypes, Test
+
+@sum_type Foo begin
+    A(::Int, ::Int)
+    B(::Float64, ::Float64)
+    C(::String)
+    D(::Pair{Symbol, Int})
+end
+
+foo(x::Foo) = @cases x begin
+    [A, B](x, y) => x + y
+    C(s)         => parse(Int, s)
+    D((_, x))    => x
+end
+
+
+@sum_type Re begin
+    Empty
+    Class(::UInt8)
+    Rep(::Re)
+    Alt(::Re, ::Re)
+    Cat(::Re, ::Re)
+    Diff(::Re, ::Re)
+    And(::Re, ::Re)
+end;
+
+count_classes(r::Re, c=0) = @cases r begin
+    Empty => c
+    Class => c + 1
+    Rep(x) => c + count_classes(x)
+    [Alt, Cat, Diff, And](x, y)  => c + count_classes(x) + count_classes(y)
+end;
+
+
+@testset "Collection of variants" begin
+    @test foo(A(1, 1)) == 2
+    @test foo(B(1, 1.5)) == 2.5
+    @test foo(C("3")) == 3
+    @test foo(D(:a => 4)) == 4
+
+    @test count_classes(And(Alt(Rep(Class(0x1)), And(Class(0x1), Empty)), Class(0x0))) == 3
+end
+
 end
