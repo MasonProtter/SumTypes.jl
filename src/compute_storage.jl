@@ -127,10 +127,10 @@ unwrap(x::ST, var) where {ST} = unwrap(x, var, variants_Tuple(ST))
     bit_sigs  = nt.bit_sigs
     quote
         names = ($(QuoteNode.(bit_names[i])...),)
-        bits = unsafe_padded_reinterpret(Variant{names, Tuple{$(bit_sigs[i]...)}}, x.bits)
+        bits = unsafe_padded_reinterpret(Variant{names, Tuple{$(bit_sigs[i]...)}}, getfield(x, :bits))
         args = $(Expr(:tuple,
                       (bit_names[i][j] ∈ ptr_names[i] ? let k = findfirst(x -> x == bit_names[i][j], ptr_names[i])
-                           :(x.ptrs[$k]:: $(ptrss[i][k][2]))
+                           :(getfield(x, :ptrs)[$k]:: $(ptrss[i][k][2]))
                        end : :(bits.data[$j]) for j ∈ eachindex(bit_names[i]))...))
         Variant{names, $(Var.parameters[2])}(args)
     end
