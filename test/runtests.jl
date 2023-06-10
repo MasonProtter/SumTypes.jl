@@ -23,6 +23,10 @@ function log_nothrow(x::T)::Result{T} where{T<:AbstractFloat}
   Success(log(x))
 end
 
+Base.getproperty(f::Foo, s::Symbol) = error("Don't do that!")
+Base.getproperty(f::Either, s::Symbol) = error("Don't do that!")
+Base.getproperty(f::Result, s::Symbol) = error("Don't do that!")
+
 #-------------------
 @testset "Basics  " begin
     @test SumTypes.is_sumtype(Int) == false
@@ -163,6 +167,7 @@ end
     Cons{A}(::A, ::List) 
 end
 Cons(x::A, y::List{Uninit}) where {A} = Cons(x, List{A}(y))
+Base.getproperty(f::List, s::Symbol) = error("Don't do that!")
 
 List(first, rest...) = Cons(first, List(rest...))
 List() = Nil
@@ -216,6 +221,7 @@ end
     C(common_field::Int, b::Float64, d::Bool, e::Float64, k::Complex{Real})
     D(common_field::Int, b::Any)
 end
+Base.getproperty(f::AT, s::Symbol) = error("Don't do that!")
 
 A(;common=1, a=true, b=10) = A(common, a, b) 
 B(;common=1, a=1, b=1.0, d=1 + 1.0im) = B(common, a, b, d)
@@ -350,7 +356,6 @@ foo(x::Foo) = @cases x begin
     D((_, x))    => x
 end
 
-
 @sum_type Re begin
     Empty
     Class(::UInt8)
@@ -367,8 +372,7 @@ count_classes(r::Re, c=0) = @cases r begin
     Rep(x) => c + count_classes(x)
     [Alt, Cat, Diff, And](x, y)  => c + count_classes(x) + count_classes(y)
 end;
-
-
+  
 @testset "Collection of variants" begin
     @test foo(A(1, 1)) == 2
     @test foo(B(1, 1.5)) == 2.5
