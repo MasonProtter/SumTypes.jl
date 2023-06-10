@@ -372,7 +372,7 @@ count_classes(r::Re, c=0) = @cases r begin
     Rep(x) => c + count_classes(x)
     [Alt, Cat, Diff, And](x, y)  => c + count_classes(x) + count_classes(y)
 end;
-
+  
 @testset "Collection of variants" begin
     @test foo(A(1, 1)) == 2
     @test foo(B(1, 1.5)) == 2.5
