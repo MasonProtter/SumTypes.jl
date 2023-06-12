@@ -163,7 +163,7 @@ bound it do the variable `l` and added `1.0` to `l`, whereas if it was a `Right`
 
 The `@cases` macro still falls far short of a full on pattern matching system, lacking many features. For anything advanced, I'd recommend using `@match` from [MLStyle.jl](https://github.com/thautwarm/MLStyle.jl).
 
-### Defining many repretitive cases simultaneously 
+### Defining many repetitive cases simultaneously 
 
 `@cases` does not allow for fallback branches, and it also does not allow one to write inexhaustive cases. To avoid making some code overly verbose and repetitive, we instead provide syntax for defining many cases in one line:
 
