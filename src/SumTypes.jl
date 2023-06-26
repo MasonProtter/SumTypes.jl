@@ -12,6 +12,7 @@ is_sumtype(::Type{T}) where {T}   = false
 
 function get_tag end
 function tags end
+
 isexpr(x, head) = x isa Expr && x.head == head
 
 """

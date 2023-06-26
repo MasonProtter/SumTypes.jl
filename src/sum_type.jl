@@ -218,20 +218,13 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
     con_names        = (x -> x.name       ).(constructors)
     con_gnames       = (x -> x.gname      ).(constructors)
     store_types = (x -> x.store_type).(constructors)
-    # N = Symbol("#N#")
-    # M = Symbol("#M#")
-    # FT = Symbol("#FT#")
-    T_full = T#T isa Expr && T.head == :curly ? Expr(:curly, T.args..., N, M, FT) : Expr(:curly, T, N, M, FT)
+    T_full = T
 
     sum_struct_def = Expr(:struct, false, T_full,
                           Expr(:block, :(data :: ($Union){$(store_types...)}),  ))
     
     enumerate_constructors = collect(enumerate(constructors))
 
-    # if_nest_unwrap = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:(error("invalid tag"))) do (i, nt)
-    #     :(tag == $FT($(i-1))), :($unwrap(x, $(nt.store_type))) 
-    # end
-# $(nt.store_type))
     ifnest_isvariant = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=false) do (i, nt)
         :(unwrapped isa $(nt.store_type)), :($(QuoteNode(nt.name)) == s)
     end
