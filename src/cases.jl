@@ -2,7 +2,6 @@
 #     "Inexhaustive @cases specification. Got cases $(variants), expected $(tags(T))"))
 @noinline check_sum_type(::Type{T}) where {T} =
     is_sumtype(T) ? nothing : throw(error("@cases only works on SumTypes, got $T which is not a SumType"))
-@noinline matching_error() = throw(error("Something went wrong during matching"))
 
 @generated function assert_exhaustive(::Type{Val{tags}}, ::Type{Val{variants}}) where {tags, variants}
     ret = nothing
@@ -89,7 +88,7 @@ macro cases(to_match, block)
         push!(to_push, _if)
         to_push = to_push[3].args
     end
-    push!(to_push, :($matching_error()))
+    # push!(to_push, :($matching_error()))
     deparameterize(x) = x isa Symbol ? x : x isa Expr && x.head == :curly ? x.args[1] : throw("Invalid variant name $x")
     quote
         let $data = $to_match
