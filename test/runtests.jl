@@ -105,62 +105,25 @@ Base.getproperty(f::Result, s::Symbol) = error("Don't do that!")
         @test x == y
         @test x != z
     end
-    @test SumTypes.get_tag_sym(Left([1])) == :Left
+    @test SumTypes.get_tag(Left([1])) == :Left
 
-    @test convert(full_type(Either{Int, Int}), Left(1))  == Left(1)
-    @test convert(full_type(Either{Int, Int}), Left(1)) !== Left(1)
-    @test convert(full_type(Either{Int, Int}), Left(1)) === Either{Int, Int}'.Left(1)
-    @test Either{Int, Int, 8, 0, UInt}(Left(1)) isa Either{Int, Int, 8, 0, UInt}
-    @test Either{Int, Int, 8, 0, UInt}(Either{Int, Int}(Left(1))) isa Either{Int, Int, 8, 0, UInt}
+    @test convert(Either{Int, Int}, Left(1))  == Left(1)
+    @test convert(Either{Int, Int}, Left(1)) !== Left(1)
+    @test convert(Either{Int, Int}, Left(1)) === Either{Int, Int}'.Left(1)
+    @test Either{Int, Int}(Left(1)) isa Either{Int, Int}
     
     @test_throws MethodError Left{Int}("hi")
     @test_throws MethodError Right{String}(1)
     @test Left{Int}(0x01) === Left{Int}(1)
 
-    @test full_type(Either{Nothing, Nothing}) == Either{Nothing, Nothing, 0, 0, UInt8}
-    @test full_type(Either{Int, Int}) == Either{Int, Int, 8, 0, UInt}
-    @test full_type(Either{Int, String}) == Either{Int, String, 8, 1, UInt8}
-
-    @test full_type(Either{Nothing, Int16}) == Either{Nothing, Int16, 2, 0, UInt16}
-    @test full_type(Either{Int32, Int32}) == Either{Int32, Int32, 4, 0, UInt32}
-    @test convert(full_type(Result{Float64}), Success(1.0)) == Success(1.0)
-
     let x = Left(1.0)
         @test SumTypes.isvariant(x, :Left) == true
         @test SumTypes.isvariant(x, :Right) == false
-        @test SumTypes.unwrap(x, :Left)[1] == 1.0
+        @test SumTypes.unwrap(x)[1] == 1.0
     end
 end
 
 #--------------------------------------------------------
-
-function pass_through(x::Either{T, U})::Either{T, U} where {T, U}
-    @cases x begin
-        Left(l) => Left(l)
-        Right(r) => Right(r)
-    end
-end
-
-@testset "search for memory safety problems from lying about consistency" begin
-    data = (rand(Int8), rand(Int16), rand(Int32), rand(Int64), rand(Int128),
-            (rand(Int8), rand(Int)), (rand(Int), rand(Int8)), (rand(Int8), rand(Int32), rand(Int)), "hi", (rand(Int8), "hi"))
-    for x ∈ data
-        T = typeof(x)
-        for y ∈ data
-            U = typeof(y) 
-            L = Either{T, U}'.Left(x)
-            R = Either{T, U}'.Right(y)
-            @test L == pass_through(L)
-            @test R == pass_through(R)
-            
-            @test L == @eval pass_through($L)
-            @test R == @eval pass_through($R)
-        end
-    end
-end
-
-#--------------------------------------------------------
-
 
 @sum_type List{A} begin 
     Nil
@@ -217,16 +180,16 @@ end
 
 @sum_type AT begin
     A(common_field::Int, a::Bool, b::Int)
-    B(common_field::Int, a::Int, b::Float64, d::Complex)
-    C(common_field::Int, b::Float64, d::Bool, e::Float64, k::Complex{Real})
-    D(common_field::Int, b::Any)
+    B(common_field::Int, a::Int, b::Float64, d::Complex{Float64})
+    C(common_field::Int, b::Float64, d::Bool, e::Float64, k::Complex{Float64})
+    D(common_field::Int, b::Char)
 end
 Base.getproperty(f::AT, s::Symbol) = error("Don't do that!")
 
 A(;common=1, a=true, b=10) = A(common, a, b) 
 B(;common=1, a=1, b=1.0, d=1 + 1.0im) = B(common, a, b, d)
-C(;common=1, b=2.0, d=false, e=3.0, k=Complex{Real}(1 + 2im)) = C(common, b, d, e, k)
-D(;common=1, b=:hi) = D(common, b)
+C(;common=1, b=2.0, d=false, e=3.0, k=1 + 2im) = C(common, b, d, e, k)
+D(;common=1, b='h') = D(common, b)
 
 foo!(xs) = for i in eachindex(xs)
     xs[i] = @cases xs[i] begin
@@ -236,9 +199,7 @@ foo!(xs) = for i in eachindex(xs)
         D => A()
     end
 end
-
-
-# #CI Doesn't like this test so just uncomment it for local testing
+#CI Doesn't like this test so just disable it in CI
 if !haskey(ENV, "CI") || ENV["CI"] != "true"
     @testset "Allocation-free @cases" begin
         xs = map(x->rand((A(), B(), C(), D())), 1:10000);
@@ -287,7 +248,6 @@ end
         A => 1
         B => 2
     end
-
 end
 
 
