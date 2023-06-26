@@ -330,8 +330,8 @@ end
 
 xs = rand((A(1, true, 10), 
            B(1, 1, 1.0, 1+1im), 
-		   C(1, 2.0, false, 3.0, Complex{Real}(1 + 2im)), 
-		   D(1, "hi")), 
+           C(1, 2.0, false, 3.0, Complex{Real}(1 + 2im)), 
+           D(1, "hi")), 
 	      10000);
 
 display(@benchmark foo!($xs);)
@@ -392,16 +392,16 @@ end
 foo!(xs) = for i in eachindex(xs)
     @inbounds x = xs[i]
     @inbounds xs[i] = x isa A ? B(x.common_field+1, x.a, x.b, x.b) :
-                      x isa B ? C(x.common_field-1, x.b, isodd(x.a), x.b, x.d) :
-                      x isa C ? D(x.common_field+1, isodd(x.common_field) ? "hi" : "bye") :
-                      x isa D ? A(x.common_field-1, x.b=="hi", x.common_field) : error()
+        x isa B ? C(x.common_field-1, x.b, isodd(x.a), x.b, x.d) :
+        x isa C ? D(x.common_field+1, isodd(x.common_field) ? "hi" : "bye") :
+        x isa D ? A(x.common_field-1, x.b=="hi", x.common_field) : error()
 end
 
 
 xs = rand((A(1, true, 10), 
            B(1, 1, 1.0, 1+1im), 
-		   C(1, 2.0, false, 3.0, Complex{Real}(1 + 2im)), 
-		   D(1, "hi")), 
+           C(1, 2.0, false, 3.0, Complex{Real}(1 + 2im)), 
+           D(1, "hi")), 
 	      10000);
 display(@benchmark foo!($xs);)
 
@@ -431,6 +431,7 @@ Unityper.jl is a somewhat similar package, with some overlapping goals to SumTyp
 <summary>Benchmark code</summary>
 
 ``` julia
+
 module UnityperTest
 
 using Unityper, BenchmarkTools
@@ -462,7 +463,7 @@ end
 foo!(xs) = for i in eachindex(xs)
     @inbounds x = xs[i]
     @inbounds xs[i] = @compactified x::AT begin
-		A => B(;common_field=x.common_field+1, a=x.a, b=x.b, d=x.b)
+        A => B(;common_field=x.common_field+1, a=x.a, b=x.b, d=x.b)
         B => C(;common_field=x.common_field-1, b=x.b, d=isodd(x.a), e=x.b, k=x.d)
         C => D(;common_field=x.common_field+1, b=isodd(x.common_field) ? "hi" : "bye")
         D => A(;common_field=x.common_field-1, a=x.b=="hi", b=x.common_field)
