@@ -295,7 +295,7 @@ julia> SumTypes.show_sumtype(io::IO, ::MIME"text/plain", x::Fruit2) = @cases x b
 julia> apple
 apple!
 ```
-If you overload `Base.show** directly inside a package, you might get annoying method deletion warnings during pre-compilation.
+If you overload `Base.show` directly inside a package, you might get annoying method deletion warnings during pre-compilation.
 
 </details>
 
