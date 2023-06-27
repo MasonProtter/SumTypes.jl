@@ -2,7 +2,6 @@
 
 - [Basics](https://github.com/MasonProtter/SumTypes.jl#basics)
 - [Destructuring sum types](https://github.com/MasonProtter/SumTypes.jl#destructuring-sum-types)
-- [Using `full_type` to get the concrete type of a Sum Type](https://github.com/MasonProtter/SumTypes.jl/#using-full_type-to-get-the-concrete-type-of-a-sum-type)
 - [Avoiding namespace clutter](https://github.com/MasonProtter/SumTypes.jl#avoiding-namespace-clutter)
 - [Custom printing](https://github.com/MasonProtter/SumTypes.jl#custom-printing)
 - [Performance](https://github.com/MasonProtter/SumTypes.jl#performance)
@@ -118,20 +117,20 @@ Okay, but how do I actually access the data enclosed in a `Fruit` or an `Either`
 SumTypes.jl exposes a `@cases` macro for efficiently unwrapping and branching on the contents of a sum type:
 
 ```julia
-julia> myfruit = Orange
-Orange::Fruit
+julia> myfruit = orange
+orange::Fruit
 
 julia> @cases myfruit begin
-           Apple => "Got an apple!"
-           Orange => "Got an orange!"
-           Banana => error("I'm allergic to bananas!")
+           apple => "Got an apple!"
+           orange => "Got an orange!"
+           banana => error("I'm allergic to bananas!")
        end
 "Got an orange!"
 
-julia> @cases Banana begin
-           Apple => "Got an apple!"
-           Orange => "Got an orange!"
-           Banana => error("I'm allergic to bananas!")
+julia> @cases banana begin
+           apple => "Got an apple!"
+           orange => "Got an orange!"
+           banana => error("I'm allergic to bananas!")
        end
 ERROR: I'm allergic to bananas!
 [...]
@@ -139,10 +138,10 @@ ERROR: I'm allergic to bananas!
 `@cases` can automatically detect if you didn't give an exhaustive set of cases (with no runtime penalty) and throw an error.
 ```julia
 julia> @cases myfruit begin
-           Apple => "Got an apple!"
-           Orange => "Got an orange!"
+           apple => "Got an apple!"
+           orange => "Got an orange!"
        end
-ERROR: Inexhaustive @cases specification. Got cases (:Apple, :Orange), expected (:Apple, :Banana, :Orange)
+ERROR: Inexhaustive @cases specification. Got cases (:apple, :orange), expected (:apple, :banana, :orange)
 [...]
 ```
 
@@ -210,44 +209,6 @@ end;
 ```
 
 <!-- </details> -->
-
-## Using `full_type` to get the concrete type of a Sum Type
-
-<details>
-<summary>Click to expand</summary>
-
-SumTypes.jl generates structs with a compactified memory layout which is computed on demand for parametric types. Because of this, 
-every SumTypes actually has two extra type parameters related to its memory layout. This means that for instance, with `Either{Int, Int}`:
-
-``` julia
-julia> @sum_type Either{A, B} begin
-           Left{A}(::A)
-           Right{B}(::B)
-       end
-
-julia> isconcretetype(Either{Int, Int})
-false
-```
-
-In order to get the proper, concrete type corresponding to `Either{Int, Int}`, one can use the `full_type` function exported by SumTypes.jl:
-
-``` julia
-julia> full_type(Either{Int, Int})
-Either{Int64, Int64, 8, 0, UInt64}
-
-julia> full_type(Either{Int, String})
-Either{Int64, String, 8, 1, UInt8}
-
-julia> full_type(Either{Tuple{Int, Int, Int}, String})
-Either{Tuple{Int64, Int64, Int64}, String, 24, 1, UInt8}
-
-julia> isconcretetype(ans)
-true
-```
-
-Avoiding these extra parameters would require https://github.com/JuliaLang/julia/issues/8472 to be implemented.
-
-</details>
 
 
 ## Avoiding namespace clutter
@@ -334,79 +295,15 @@ julia> SumTypes.show_sumtype(io::IO, ::MIME"text/plain", x::Fruit2) = @cases x b
 julia> apple
 apple!
 ```
-If you overload `Base.show` directly inside a package, you might get annoying method deletion warnings during pre-compilation.
+If you overload `Base.show** directly inside a package, you might get annoying method deletion warnings during pre-compilation.
 
 </details>
 
 ## Performance
 
-In the same way as [Unityper.jl](https://github.com/YingboMa/Unityper.jl) is able to provide a dramatic speedup versus manual union splitting, SumTypes.jl can do this too:
+SumTypes.jl can provide some speedups compared to union-splitting when destructuring and branching on abstractly typed data.
 
-Branching on abstractly typed data
-
-<details>
-<summary>Benchmark code</summary>
-
-``` julia
-module AbstractTypeTest
-
-using BenchmarkTools
-
-abstract type AT end
-Base.@kwdef struct A <: AT
-    common_field::Int = 0
-    a::Bool = true
-    b::Int = 10
-end
-Base.@kwdef struct B <: AT
-    common_field::Int = 0
-    a::Int = 1
-    b::Float64 = 1.0
-    d::Complex = 1 + 1.0im # not isbits
-end
-Base.@kwdef struct C <: AT
-    common_field::Int = 0
-    b::Float64 = 2.0
-    d::Bool = false
-    e::Float64 = 3.0
-    k::Complex{Real} = 1 + 2im # not isbits
-end
-Base.@kwdef struct D <: AT
-    common_field::Int = 0
-    b::Any = :hi # not isbits
-end
-
-foo!(xs) = for i in eachindex(xs)
-    @inbounds x = xs[i]
-    @inbounds xs[i] = x isa A ? B() :
-                      x isa B ? C() :
-                      x isa C ? D() :
-                      x isa D ? A() : error()
-end
-
-
-xs = rand((A(), B(), C(), D()), 10000);
-display(@benchmark foo!($xs);)
-
-end
-```
-
-</details>
-
-```
-BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  267.399 μs …   3.118 ms  ┊ GC (min … max):  0.00% … 90.36%
- Time  (median):     278.904 μs               ┊ GC (median):     0.00%
- Time  (mean ± σ):   316.971 μs ± 306.290 μs  ┊ GC (mean ± σ):  11.68% ± 10.74%
-
-  █                                                             ▁
-  █▆▄▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▇▇ █
-  267 μs        Histogram: log(frequency) by time       2.77 ms <
-
- Memory estimate: 654.75 KiB, allocs estimate: 21952.
-```
-
-SumTypes.jl
+#### SumTypes.jl
 
 <details>
 <summary>Benchmark code</summary>
@@ -422,47 +319,119 @@ using SumTypes,  BenchmarkTools
     D(common_field::Int, b::Any)
 end
 
-A(;common_field=1, a=true, b=10) = A(common_field, a, b) 
-B(;common_field=1, a=1, b=1.0, d=1 + 1.0im) = B(common_field, a, b, d)
-C(;common_field=1, b=2.0, d=false, e=3.0, k=Complex{Real}(1 + 2im)) = C(common_field, b, d, e, k)
-D(;common_field=1, b=:hi) = D(common_field, b)
-
 foo!(xs) = for i in eachindex(xs)
     xs[i] = @cases xs[i] begin
-        A => B()
-        B => C()
-        C => D()
-        D => A()
+        A(cf, a, b)       => B(cf+1, a, b, b)
+        B(cf, a, b, d)    => C(cf-1, b, isodd(a), b, d)
+        C(cf, b, d, e, k) => D(cf+1, isodd(cf) ? "hi" : "bye")
+        D(cf, b)          => A(cf-1, b=="hi", cf)
     end
 end
 
-xs = rand((A(), B(), C(), D()), 10000);
+xs = rand((A(1, true, 10), 
+           B(1, 1, 1.0, 1+1im), 
+           C(1, 2.0, false, 3.0, Complex{Real}(1 + 2im)), 
+           D(1, "hi")), 
+	      10000);
+
 display(@benchmark foo!($xs);)
 
-end 
+end
 ```
 
 </details>
 
 ```
 BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  52.680 μs …  72.570 μs  ┊ GC (min … max): 0.00% … 0.00%
- Time  (median):     53.590 μs               ┊ GC (median):    0.00%
- Time  (mean ± σ):   53.718 μs ± 756.064 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+ Range (min … max):  300.541 μs …   2.585 ms  ┊ GC (min … max): 0.00% … 86.91%
+ Time  (median):     313.611 μs               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   342.285 μs ± 242.158 μs  ┊ GC (mean ± σ):  8.29% ± 10.04%
 
-        ▁▂▁▃▆▅█▇▅▅▃▁▁                                           
-  ▁▂▂▃▅▆██████████████▇▇▅▄▄▃▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
-  52.7 μs         Histogram: frequency by time         56.7 μs <
+  █                                                             ▁
+  █▇▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█ █
+  301 μs        Histogram: log(frequency) by time       2.37 ms <
 
- Memory estimate: 0 bytes, allocs estimate: 0.
+ Memory estimate: 620.88 KiB, allocs estimate: 19900.
 ```
 
-And Unityper.jl:
+
+#### Branching on abstractly typed data:
 
 <details>
 <summary>Benchmark code</summary>
 
 ``` julia
+module AbstractTypeTest
+
+using BenchmarkTools
+
+abstract type AT end
+Base.@kwdef struct A <: AT
+    common_field::Int
+    a::Bool 
+    b::Int
+end
+Base.@kwdef struct B <: AT
+    common_field::Int
+    a::Int
+    b::Float64 
+    d::Complex  # not isbits
+end
+Base.@kwdef struct C <: AT
+    common_field::Int
+    b::Float64 
+    d::Bool 
+    e::Float64
+    k::Complex{Real}  # not isbits
+end
+Base.@kwdef struct D <: AT
+    common_field::Int
+    b::Any  # not isbits
+end
+
+foo!(xs) = for i in eachindex(xs)
+    @inbounds x = xs[i]
+    @inbounds xs[i] = x isa A ? B(x.common_field+1, x.a, x.b, x.b) :
+        x isa B ? C(x.common_field-1, x.b, isodd(x.a), x.b, x.d) :
+        x isa C ? D(x.common_field+1, isodd(x.common_field) ? "hi" : "bye") :
+        x isa D ? A(x.common_field-1, x.b=="hi", x.common_field) : error()
+end
+
+
+xs = rand((A(1, true, 10), 
+           B(1, 1, 1.0, 1+1im), 
+           C(1, 2.0, false, 3.0, Complex{Real}(1 + 2im)), 
+           D(1, "hi")), 
+	      10000);
+display(@benchmark foo!($xs);)
+
+end
+```
+
+</details>
+
+```
+BenchmarkTools.Trial: 10000 samples with 1 evaluation.
+ Range (min … max):  366.510 μs …   4.504 ms  ┊ GC (min … max):  0.00% … 90.65%
+ Time  (median):     386.470 μs               ┊ GC (median):     0.00%
+ Time  (mean ± σ):   478.369 μs ± 571.525 μs  ┊ GC (mean ± σ):  18.62% ± 13.77%
+
+  █                                                           ▂ ▁
+  █▇▄▅▅▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█ █
+  367 μs        Histogram: log(frequency) by time        4.1 ms <
+
+ Memory estimate: 1.06 MiB, allocs estimate: 31958.
+```
+
+#### Unityper.jl 
+
+Unityper.jl is a somewhat similar package, with some overlapping goals to SumTypes.jl. However, In this test, Unityper.jl ends up doing much worse than abstract containers or SumTypes.jl:
+
+<details>
+<summary>Benchmark code</summary>
+
+``` julia
+
 module UnityperTest
 
 using Unityper, BenchmarkTools
@@ -487,17 +456,17 @@ using Unityper, BenchmarkTools
         k::Complex{Real} = 1 + 2im # not isbits
     end
     struct D <: AT
-        b::Any = :hi # not isbits
+        b::Any = "hi" # not isbits
     end
 end
 
 foo!(xs) = for i in eachindex(xs)
     @inbounds x = xs[i]
     @inbounds xs[i] = @compactified x::AT begin
-        A => B()
-        B => C()
-        C => D()
-        D => A()
+        A => B(;common_field=x.common_field+1, a=x.a, b=x.b, d=x.b)
+        B => C(;common_field=x.common_field-1, b=x.b, d=isodd(x.a), e=x.b, k=x.d)
+        C => D(;common_field=x.common_field+1, b=isodd(x.common_field) ? "hi" : "bye")
+        D => A(;common_field=x.common_field-1, a=x.b=="hi", b=x.common_field)
     end
 end
 
@@ -510,18 +479,18 @@ end
 </details>
 
 ```
-BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  54.220 μs …  76.000 μs  ┊ GC (min … max): 0.00% … 0.00%
- Time  (median):     55.030 μs               ┊ GC (median):    0.00%
- Time  (mean ± σ):   55.073 μs ± 466.103 ns  ┊ GC (mean ± σ):  0.00% ± 0.00%
+BenchmarkTools.Trial: 2539 samples with 1 evaluation.
+ Range (min … max):  1.847 ms …   5.341 ms  ┊ GC (min … max): 0.00% … 64.05%
+ Time  (median):     1.890 ms               ┊ GC (median):    0.00%
+ Time  (mean ± σ):   1.968 ms ± 478.604 μs  ┊ GC (mean ± σ):  3.93% ±  9.68%
 
-              ▁▁▅▄▄▅▅█▄▅▃▃▂                                     
-  ▁▁▁▁▂▂▂▃▄▆▆███████████████▇▆▅▆▃▃▃▂▂▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁ ▃
-  54.2 μs         Histogram: frequency by time         56.7 μs <
- Memory estimate: 0 bytes, allocs estimate: 0.
+  █▆
+  ██▇▆▁▃▁▁▃▁▃▁▁▁▁▁▃▁▁▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▅▆▆▆▇ █
+  1.85 ms      Histogram: log(frequency) by time       4.9 ms <
+
+ Memory estimate: 1.14 MiB, allocs estimate: 27272.
 ```
 
-SumTypes.jl and Unityper.jl are about equal in this benchmark, though there are cases where there are differences.
 SumTypes.jl has some other advantages relative to Unityper.jl such as:
 - SumTypes.jl allows [parametric types](https://docs.julialang.org/en/v1/manual/types/#Parametric-Types) for much greater container flexibility.
 - SumTypes.jl does not require default values for every field of the struct.
@@ -529,4 +498,4 @@ SumTypes.jl has some other advantages relative to Unityper.jl such as:
 - SumTypes.jl allows you to hide its variants from the namespace (opt in).
 
 One advantage of Unityper.jl is:
-- Because Unityper.jl doesn't allow parameterized types and needs to know all type information at macroexpansion time, their structs have a fixed layout for boxed variables that lets them avoid an allocation when storing heap allocated objects (this allocation would be in addition to the heap allocation for the object itself). If we had used `D(;common_field=1, b="hi")` in our benchmarks, SumTypes.jl could have incurred an allocation whereas Unityper.jl would not. As far as I know, this would requre https://github.com/JuliaLang/julia/issues/8472 in order to avoid in SumTypes.jl
+- If you're not modifying the data and just re-using old heap allocated data, there are cases where Unityper.jl can avoid an allocation that SumTypes.jl would have incurred.

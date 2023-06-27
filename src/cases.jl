@@ -2,7 +2,6 @@
 #     "Inexhaustive @cases specification. Got cases $(variants), expected $(tags(T))"))
 @noinline check_sum_type(::Type{T}) where {T} =
     is_sumtype(T) ? nothing : throw(error("@cases only works on SumTypes, got $T which is not a SumType"))
-@noinline matching_error() = throw(error("Something went wrong during matching"))
 
 @generated function assert_exhaustive(::Type{Val{tags}}, ::Type{Val{variants}}) where {tags, variants}
     ret = nothing
@@ -67,22 +66,21 @@ macro cases(to_match, block)
     @gensym con_Union
     @gensym Typ
     @gensym nt
+    @gensym unwrapped
     variants = map(x -> x.variant, stmts)
     
-    ex = :(if $isvariant($data, $(QuoteNode(stmts[1].variant)));
-               $(stmts[1].iscall ? :(($(stmts[1].fieldnames...),) =
-                   $unwrap($data, $constructor($Typ, $Val{$(QuoteNode(stmts[1].variant))}), $variants_Tuple($Typ))  ) : nothing);
+    ex = :(if $unwrapped isa $Variant{$(QuoteNode(stmts[1].variant))}
+               $(stmts[1].iscall ? :(($(stmts[1].fieldnames...),) = $unwrapped) : nothing);
                $(stmts[1].rhs)
            end)
     Base.remove_linenums!(ex)
     pushfirst!(ex.args[2].args, lnns[1])
     to_push = ex.args
     for i ∈ 2:length(stmts)
-        _if = :(if $isvariant($data, $(QuoteNode(stmts[i].variant)));
-                    $(stmts[i].iscall ? :(($(stmts[i].fieldnames...),) =
-                        $unwrap($data, $constructor($Typ, $Val{$(QuoteNode(stmts[i].variant))}), $variants_Tuple($Typ))) : nothing);
-                    $(stmts[i].rhs)
-                end)
+        _if = :(if $unwrapped isa $Variant{$(QuoteNode(stmts[i].variant))}
+                     $(stmts[i].iscall ? :(($(stmts[i].fieldnames...),) = $unwrapped) : nothing);
+                     $(stmts[i].rhs)
+                 end)
         _if.head = :elseif
         Base.remove_linenums!(_if)
         pushfirst!(_if.args[2].args, lnns[i])
@@ -90,13 +88,14 @@ macro cases(to_match, block)
         push!(to_push, _if)
         to_push = to_push[3].args
     end
-    push!(to_push, :($matching_error()))
+    # push!(to_push, :($matching_error()))
     deparameterize(x) = x isa Symbol ? x : x isa Expr && x.head == :curly ? x.args[1] : throw("Invalid variant name $x")
     quote
         let $data = $to_match
             $Typ = $typeof($data)
             $check_sum_type($Typ)
             $assert_exhaustive(Val{$tags($Typ)}, Val{$(Expr(:tuple, QuoteNode.(deparameterize.(variants))...))})
+            $unwrapped = $unwrap($data)
             $ex
         end
     end |> esc
