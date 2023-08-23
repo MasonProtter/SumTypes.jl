@@ -47,7 +47,7 @@ julia> typeof(apple) == typeof(banana) == typeof(orange) <: Fruit
 true
 ```
 
-But this isn't particularly interesting. More intesting is sum types which can **enclose data**. 
+But this isn't particularly interesting. More interesting are sum types which can **enclose data**. 
 Let's explore a very fundamental sum type (fundamental in the sense that all other sum types may be derived from it):
 
 ```julia
