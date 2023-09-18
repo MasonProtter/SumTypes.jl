@@ -343,3 +343,28 @@ end;
 end
 
 end
+
+module ModuleScopedSumTypes 
+
+using SumTypes, Test 
+
+@sum_type Foo begin
+    A1(::String)
+    B(::Float64)
+    C1(::String)
+    D(::Pair{Symbol, Int})
+end
+
+foo(x::Foo) = @cases x begin
+    [A1, B](x) => x
+    C1(s)         => parse(Int, s)
+    D((_, x))    => x
+end
+
+@testset "Module scoped sum types" begin
+    @test foo(A1("abc")) == "abc"
+    @test foo(B(1.5)) == 1.5
+    @test foo(C1("3")) == 3
+    @test foo(D(:a => 4)) == 4
+end
+end

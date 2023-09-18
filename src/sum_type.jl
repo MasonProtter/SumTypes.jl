@@ -1,10 +1,10 @@
 
 macro sum_type(T, args...)
-    esc(_sum_type(T, args...))
+    esc(_sum_type(T, args...; _module=__module__))
 end
 
-_sum_type(T, blk) = _sum_type(T, QuoteNode(:visible), blk)
-function _sum_type(T, hidden, blk)
+_sum_type(T, blk; kwargs...) = _sum_type(T, QuoteNode(:visible), blk; kwargs...)
+function _sum_type(T, hidden, blk; _module::Module)
     if hidden == QuoteNode(:hidden)
         hide_variants = true
     elseif hidden == QuoteNode(:visible)
@@ -19,7 +19,8 @@ function _sum_type(T, hidden, blk)
     elseif T isa Expr && T.head == :curly
         T.args[1], (x -> x isa Expr && x.head == :(<:) ? x.args[1] : x).(T.args[2:end]), T.args[2:end], (x -> x isa Expr && x.head == :(<:) ? x.args[2] : Any).(T.args[2:end])
     end
-    T_nameparam = isempty(T_params) ? T : :($T_name{$(T_params...)})
+    T_name = :($_module.$T_name)
+    T_nameparam = isempty(T_params) ? :($_module.$T) : :($T_name{$(T_params...)})
     filter!(x -> !(x isa LineNumberNode), blk.args)
     
     constructors = generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, blk)
