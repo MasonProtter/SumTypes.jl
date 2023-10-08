@@ -86,7 +86,7 @@ Typically, you'll do this by enforcing a return type on a function:
 function foo() :: Either{Int, Float64}
     # Randomly return either a Left(1) or a Right(2.0)
     rand(Bool) ? Left(1) : Right(2.0)
-end;
+end
 ```
 ```julia
 julia> foo()
@@ -99,11 +99,10 @@ This is particularly useful because in this case `foo` is
 [type stable](https://docs.julialang.org/en/v1/manual/performance-tips/#Write-%22type-stable%22-functions)!
 
 ``` julia
-julia> Base.return_types(foo, Tuple{})
-1-element Vector{Any}:
- Either{Int64, Float64, 8, 0, UInt64}
+julia> Core.Compiler.return_type(foo, Tuple{})
+Either{Int64, Float64}
 
-julia> isconcretetype(ans[1])
+julia> isconcretetype(ans)
 true
 ```
 Note that unlike `Union{A, B}`, `A <: Either{A,B}` is false, and `Either{A, A}` is distinct from `A`.
