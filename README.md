@@ -28,12 +28,15 @@ they're helpful, like performance sensitive branching on heterogeneous types, an
 The simplest version of a sum type is just a list of constant variants (i.e. basically a 
 [julia enum](https://docs.julialang.org/en/v1/base/base/#Base.Enums.@enum)):
 ```julia
-julia> @sum_type Fruit begin
-           apple
-           banana
-           orange
-       end
+using SumTypes
 
+@sum_type Fruit begin
+    apple
+    banana
+    orange
+end
+```
+```julia
 julia> apple
 apple::Fruit
 
@@ -51,12 +54,10 @@ But this isn't particularly interesting. More interesting are sum types which ca
 Let's explore a very fundamental sum type (fundamental in the sense that all other sum types may be derived from it):
 
 ```julia
-julia> using SumTypes
-
-julia> @sum_type Either{A, B} begin
-           Left{A}(::A)
-           Right{B}(::B)
-       end
+@sum_type Either{A, B} begin
+    Left{A}(::A)
+    Right{B}(::B)
+end
 ```
 This says that we have a sum type `Either{A, B}`, and it can hold a value that is either of type `A` or of type `B`. `Either` has two
 'constructors' which we have called `Left{A}` and `Right{B}`. These exist essentially as a way to have instances of `Either` carry 
@@ -74,7 +75,7 @@ Notice that because both `Left{A}` and `Right{B}` each carry one fewer type para
 `Left(1)` is *not enough* to fully specify the type of the full `Either`, so the unspecified field is `SumTypes.Uninit` by default.
 
 In cases like this, you can rely on *implicit conversion* to get the fully initialized type. E.g.
-``` julia
+```julia
 julia> let x::Either{Int, Float64} = Left(1)
            x
        end
@@ -82,11 +83,12 @@ Left(1)::Either{Int64, Float64}
 ```
 Typically, you'll do this by enforcing a return type on a function:
 ``` julia
-julia> function foo() :: Either{Int, Float64}
-           # Randomly return either a Left(1) or a Right(2.0)
-           rand(Bool) ? Left(1) : Right(2.0)
-       end;
-
+function foo() :: Either{Int, Float64}
+    # Randomly return either a Left(1) or a Right(2.0)
+    rand(Bool) ? Left(1) : Right(2.0)
+end;
+```
+```julia
 julia> foo()
 Left(1)::Either{Int64, Float64}
 
