@@ -99,7 +99,24 @@ Base.getproperty(f::Result, s::Symbol) = error("Don't do that!")
     @test_throws Exception SumTypes._sum_type(
         :(Blah{T}), :(begin
                          foo{U}(::U)
-                     end ))
+                      end ))
+    @test_throws Exception SumTypes._cases(:(Fruit), :(1))
+    @test_throws Exception SumTypes._cases(:(Fruit), :([1, 2, 3]))
+    @test_throws Exception SumTypes._cases(:(Fruit), :(begin
+                                                       true
+                                                       _ => false
+                                                       banana => false
+                                                       end))
+    @test_throws Exception SumTypes._cases(:(Fruit), :(begin
+                                                       apple => true
+                                                       _ => false
+                                                       banana => false
+                                                       end))
+    @test_throws Exception SumTypes._cases(:(Fruit), :(begin
+                                                       apple => true
+                                                       [banana, orange()] => false
+                                                       _ => false
+                                                       end))
     
     let x = Left([1]), y = Left([1.0]), z = Right([1])
         @test x == y

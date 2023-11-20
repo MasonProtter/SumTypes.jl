@@ -19,7 +19,11 @@
 end
 
 macro cases(to_match, block)
-    @assert block.head == :block
+    esc(_cases(to_match, block))
+end
+
+function _cases(to_match, block) 
+    block.head == :block || error("The second argument to @cases must be a code block")
     lnns = filter(block.args) do arg
         arg isa LineNumberNode
     end
@@ -32,7 +36,7 @@ macro cases(to_match, block)
         if arg isa LineNumberNode
             return nothing
         end
-        arg.head == :call && arg.args[1] == :(=>) || throw(error("Malformed case $arg"))
+        arg.head == :call && arg.args[1] == :(=>) || error("Malformed case $arg")
         lhs = arg.args[2]
         rhs = arg.args[3]
         if isexpr(lhs, :call) # arg.args[2] isa Expr && arg.args[2].head == :call
@@ -115,5 +119,5 @@ macro cases(to_match, block)
             $unwrapped = $unwrap($data)
             $ex
         end
-    end |> esc
+    end
 end
