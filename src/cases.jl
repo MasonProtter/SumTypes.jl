@@ -26,7 +26,9 @@ macro cases(to_match, block)
     # Base.remove_linenums!(block)
 
     stmts = []
-    foreach(block.args) do arg
+    wildcard_stmt = Ref{Any}()
+    
+    foreach(enumerate(block.args)) do (i, arg)
         if arg isa LineNumberNode
             return nothing
         end
@@ -43,7 +45,15 @@ macro cases(to_match, block)
             iscall = false
         end
         if variant isa Symbol
-            push!(stmts, (;variant=variant, rhs=rhs, fieldnames=fieldnames, iscall=iscall))
+            if variant === :_
+                if i == length(block.args)
+                    wildcard_stmt[] = rhs
+                else
+                    error("The wildcard variant _ can only be used as the last option to @cases")
+                end
+            else
+                push!(stmts, (;variant=variant, rhs=rhs, fieldnames=fieldnames, iscall=iscall))
+            end
         elseif isexpr(variant, :vect)
             for subvariant ∈ variant.args
                 if !(subvariant isa Symbol)
@@ -90,11 +100,18 @@ macro cases(to_match, block)
     end
     # push!(to_push, :($matching_error()))
     deparameterize(x) = x isa Symbol ? x : x isa Expr && x.head == :curly ? x.args[1] : throw("Invalid variant name $x")
+    if isdefined(wildcard_stmt, :x)
+        push!(to_push, wildcard_stmt[])
+        exhaustive_stmt = nothing
+    else
+        exhaustive_stmt = :($assert_exhaustive(Val{$tags($Typ)},
+                                               Val{$(Expr(:tuple, QuoteNode.(deparameterize.(variants))...))}))
+    end
     quote
         let $data = $to_match
             $Typ = $typeof($data)
             $check_sum_type($Typ)
-            $assert_exhaustive(Val{$tags($Typ)}, Val{$(Expr(:tuple, QuoteNode.(deparameterize.(variants))...))})
+            $exhaustive_stmt
             $unwrapped = $unwrap($data)
             $ex
         end

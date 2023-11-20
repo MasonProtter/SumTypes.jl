@@ -165,8 +165,8 @@ The `@cases` macro still falls far short of a full on pattern matching system, l
 
 ### Defining many repetitive cases simultaneously 
 
-`@cases` does not allow for fallback branches, and it also does not allow one to write inexhaustive cases. To avoid making some code overly verbose and repetitive, we instead provide syntax for defining many cases in one line:
-
+Generally, it's good to explicitly handle all cases of a sum type, but sometimes you just want one set of behaviour for
+a large set of cases. One option, is 'collections' of cases like so:
 ``` julia
 @sum_type Re begin
     Empty
@@ -207,6 +207,16 @@ count_classes(r::Re, c=0) = @cases r begin
     Rep(x) => c + count_classes(x)
    [Alt, Cat, Diff, And](x, y)  => c + count_classes(x) + count_classes(y)
 end;
+```
+
+SumTypes also lets you use `_` as a case predicate that accepts anything, but this only works in the final position, and
+does not allow destructuring:
+
+``` julia
+isEmpty(x::Re) = @cases x begin
+    Empty => true
+    _     => false
+end
 ```
 
 <!-- </details> -->

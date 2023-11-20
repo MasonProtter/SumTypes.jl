@@ -320,10 +320,10 @@ end
     Empty
     Class(::UInt8)
     Rep(::Re)
-    Alt(::Re, ::Re)
-    Cat(::Re, ::Re)
+    Alt(::Re,  ::Re)
+    Cat(::Re,  ::Re)
     Diff(::Re, ::Re)
-    And(::Re, ::Re)
+    And(::Re,  ::Re)
 end;
 
 count_classes(r::Re, c=0) = @cases r begin
@@ -332,7 +332,12 @@ count_classes(r::Re, c=0) = @cases r begin
     Rep(x) => c + count_classes(x)
     [Alt, Cat, Diff, And](x, y)  => c + count_classes(x) + count_classes(y)
 end;
-  
+
+is_empty(r::Re) = @cases r begin
+    Empty => true
+    _     => false
+end
+
 @testset "Collection of variants" begin
     @test foo(A(1, 1)) == 2
     @test foo(B(1, 1.5)) == 2.5
@@ -340,6 +345,11 @@ end;
     @test foo(D(:a => 4)) == 4
 
     @test count_classes(And(Alt(Rep(Class(0x1)), And(Class(0x1), Empty)), Class(0x0))) == 3
+
+    @test is_empty(Empty)
+    for r ∈ (Class(1), Rep(Class(1)), Alt(Empty, Empty), Cat(Empty, Empty), Diff(Empty, Empty), And(Empty, Empty))
+        @test !is_empty(r)
+    end
 end
 
 end
