@@ -99,7 +99,24 @@ Base.getproperty(f::Result, s::Symbol) = error("Don't do that!")
     @test_throws Exception SumTypes._sum_type(
         :(Blah{T}), :(begin
                          foo{U}(::U)
-                     end ))
+                      end ))
+    @test_throws Exception SumTypes._cases(:(Fruit), :(1))
+    @test_throws Exception SumTypes._cases(:(Fruit), :([1, 2, 3]))
+    @test_throws Exception SumTypes._cases(:(Fruit), :(begin
+                                                       true
+                                                       _ => false
+                                                       banana => false
+                                                       end))
+    @test_throws Exception SumTypes._cases(:(Fruit), :(begin
+                                                       apple => true
+                                                       _ => false
+                                                       banana => false
+                                                       end))
+    @test_throws Exception SumTypes._cases(:(Fruit), :(begin
+                                                       apple => true
+                                                       [banana, orange()] => false
+                                                       _ => false
+                                                       end))
     
     let x = Left([1]), y = Left([1.0]), z = Right([1])
         @test x == y
@@ -320,10 +337,10 @@ end
     Empty
     Class(::UInt8)
     Rep(::Re)
-    Alt(::Re, ::Re)
-    Cat(::Re, ::Re)
+    Alt(::Re,  ::Re)
+    Cat(::Re,  ::Re)
     Diff(::Re, ::Re)
-    And(::Re, ::Re)
+    And(::Re,  ::Re)
 end;
 
 count_classes(r::Re, c=0) = @cases r begin
@@ -332,7 +349,12 @@ count_classes(r::Re, c=0) = @cases r begin
     Rep(x) => c + count_classes(x)
     [Alt, Cat, Diff, And](x, y)  => c + count_classes(x) + count_classes(y)
 end;
-  
+
+is_empty(r::Re) = @cases r begin
+    Empty => true
+    _     => false
+end
+
 @testset "Collection of variants" begin
     @test foo(A(1, 1)) == 2
     @test foo(B(1, 1.5)) == 2.5
@@ -340,6 +362,11 @@ end;
     @test foo(D(:a => 4)) == 4
 
     @test count_classes(And(Alt(Rep(Class(0x1)), And(Class(0x1), Empty)), Class(0x0))) == 3
+
+    @test is_empty(Empty)
+    for r ∈ (Class(1), Rep(Class(1)), Alt(Empty, Empty), Cat(Empty, Empty), Diff(Empty, Empty), And(Empty, Empty))
+        @test !is_empty(r)
+    end
 end
 
 end
