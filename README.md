@@ -46,7 +46,7 @@ banana::Fruit
 julia> orange
 brange::Fruit
 
-julia> typeof(apple) == typeof(banana) == typeof(orange) <: Fruit
+julia> typeof(apple) == typeof(banana) == typeof(orange) == Fruit
 true
 ```
 
