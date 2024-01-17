@@ -23,9 +23,6 @@ function log_nothrow(x::T)::Result{T} where{T<:AbstractFloat}
   Success(log(x))
 end
 
-Base.getproperty(f::Foo, s::Symbol) = error("Don't do that!")
-Base.getproperty(f::Either, s::Symbol) = error("Don't do that!")
-Base.getproperty(f::Result, s::Symbol) = error("Don't do that!")
 
 #-------------------
 @testset "Basics  " begin
@@ -147,7 +144,6 @@ end
     Cons{A}(::A, ::List) 
 end
 Cons(x::A, y::List{Uninit}) where {A} = Cons(x, List{A}(y))
-Base.getproperty(f::List, s::Symbol) = error("Don't do that!")
 
 List(first, rest...) = Cons(first, List(rest...))
 List() = Nil
@@ -201,7 +197,6 @@ end
     C(common_field::Int, b::Float64, d::Bool, e::Float64, k::Complex{Float64})
     D(common_field::Int, b::Char)
 end
-Base.getproperty(f::AT, s::Symbol) = error("Don't do that!")
 
 A(;common=1, a=true, b=10) = A(common, a, b) 
 B(;common=1, a=1, b=1.0, d=1 + 1.0im) = B(common, a, b, d)
