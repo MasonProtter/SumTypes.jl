@@ -246,11 +246,17 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
     end
 
     @gensym _T
-    
+    @gensym st s
     ex = quote
         $sum_struct_def
-        $Base.propertynames(::$T_name) = ()
-        $Base.getproperty(::$T_name, ::Symbol) = error("getproperty is deliberately disabled for SumTypes")
+        function $Base.propertynames(::$T_name)
+            Base.depwarn("propertynames of a SumType is not intended to be used. Use `SumTypes.unwrap` if you need to access SumType internals", nothing)
+            ()
+        end
+        function $Base.getproperty($st::$T_name, $s::Symbol)
+            Base.depwarn("getproperty on a SumType is not intended to be used. Use `SumTypes.unwrap` if you need to access SumType internals", nothing)
+            $Base.getfield($st, $s)
+        end
         $SumTypes.is_sumtype(::Type{<:$T_name}) = true
         $SumTypes.constructors(::Type{<:$T_name}) =
             $NamedTuple{$tags($T_name)}($(Expr(:tuple, (nt.store_type_uninit for nt ∈ constructors)...)))
