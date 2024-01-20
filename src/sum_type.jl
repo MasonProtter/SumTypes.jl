@@ -228,7 +228,7 @@ function generate_sum_struct_expr(T, T_abstract, T_name, T_params, T_params_cons
 
     sum_struct_def = Expr(:struct, false, Expr(:(<:), T_full, T_abstract),
                           Expr(:block, :(data :: ($Union){$(store_types...)}),  ))
-    sum_struct_def = :(Base.@__doc__ $sum_struct_def)
+    sum_struct_def = :($Base.@__doc__ $sum_struct_def)
     
     enumerate_constructors = collect(enumerate(constructors))
 
@@ -257,11 +257,11 @@ function generate_sum_struct_expr(T, T_abstract, T_name, T_params, T_params_cons
     ex = quote
         $sum_struct_def
         function $Base.propertynames(::$T_name)
-            Base.depwarn("propertynames of a SumType is not intended to be used. Use `SumTypes.unwrap` if you need to access SumType internals", nothing)
+            $Base.depwarn("propertynames of a SumType is not intended to be used. Use `SumTypes.unwrap` if you need to access SumType internals", $nothing)
             ()
         end
         function $Base.getproperty($st::$T_name, $s::Symbol)
-            Base.depwarn("getproperty on a SumType is not intended to be used. Use `SumTypes.unwrap` if you need to access SumType internals", nothing)
+            $Base.depwarn("getproperty on a SumType is not intended to be used. Use `SumTypes.unwrap` if you need to access SumType internals", $nothing)
             $Base.getfield($st, $s)
         end
         $SumTypes.is_sumtype(::Type{<:$T_name}) = true
