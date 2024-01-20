@@ -4,7 +4,7 @@ using Test, SumTypes
 abstract type AbstractFoo end
 
 """
-This is a Foo
+This is a Foo.
 """
 @sum_type Foo <: AbstractFoo begin
     Bar(::Int)
