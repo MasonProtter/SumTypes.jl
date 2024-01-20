@@ -228,6 +228,7 @@ function generate_sum_struct_expr(T, T_abstract, T_name, T_params, T_params_cons
 
     sum_struct_def = Expr(:struct, false, Expr(:(<:), T_full, T_abstract),
                           Expr(:block, :(data :: ($Union){$(store_types...)}),  ))
+    sum_struct_def = :(Base.@__doc__ $sum_struct_def)
     
     enumerate_constructors = collect(enumerate(constructors))
 
