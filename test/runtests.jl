@@ -1,7 +1,8 @@
 using Test, SumTypes
 
 
-@sum_type Foo begin
+abstract type AbstractFoo end
+@sum_type Foo <: AbstractFoo begin
     Bar(::Int)
     Baz(x)
 end
@@ -11,8 +12,8 @@ end
     Right{B}(::B)
 end
 
-abstract type AbstractResult end
-@sum_type Result{T <: Union{Number, Uninit}} <: AbstractResult begin
+abstract type AbstractResult{T} end
+@sum_type Result{T <: Union{Number, Uninit}} <: AbstractResult{T} begin
     Failure
     Success{T}(::T)
 end
@@ -28,7 +29,9 @@ end
 #-------------------
 @testset "Basics  " begin
     @test SumTypes.is_sumtype(Int) == false
+    @test Foo <: AbstractFoo
     @test Bar(1) isa Foo
+    @test Bar(1) isa AbstractFoo
     @test_throws MethodError Foo(1)
 
     function either_test(x::Either)
@@ -65,7 +68,7 @@ end
     @test_throws ErrorException either_test_overcomplete(Left(1))
 
     @test Result <: AbstractResult
-    @test Success(0.0) isa AbstractResult
+    @test Success(0.0) isa AbstractResult{Float64}
     @test log_nothrow(1.0) == Success(0.0)
     @test log_nothrow(-1.0) == Failure
 
