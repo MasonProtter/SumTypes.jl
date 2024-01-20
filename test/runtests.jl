@@ -11,7 +11,8 @@ end
     Right{B}(::B)
 end
 
-@sum_type Result{T <: Union{Number, Uninit}} begin
+abstract type AbstractResult end
+@sum_type Result{T <: Union{Number, Uninit}} <: AbstractResult begin
     Failure
     Success{T}(::T)
 end
@@ -63,6 +64,8 @@ end
     
     @test_throws ErrorException either_test_overcomplete(Left(1))
 
+    @test Result <: AbstractResult
+    @test Success(0.0) isa AbstractResult
     @test log_nothrow(1.0) == Success(0.0)
     @test log_nothrow(-1.0) == Failure
 
