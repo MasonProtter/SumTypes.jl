@@ -4,6 +4,7 @@
 - [Destructuring sum types](https://github.com/MasonProtter/SumTypes.jl#destructuring-sum-types)
 - [Avoiding namespace clutter](https://github.com/MasonProtter/SumTypes.jl#avoiding-namespace-clutter)
 - [Custom printing](https://github.com/MasonProtter/SumTypes.jl#custom-printing)
+- [Alternative syntax](https://github.com/MasonProtter/SumTypes.jl#alternative-syntax)
 - [Performance](https://github.com/MasonProtter/SumTypes.jl#performance)
 
 
@@ -309,6 +310,10 @@ apple!
 If you overload `Base.show` directly inside a package, you might get annoying method deletion warnings during pre-compilation.
 
 </details>
+
+## Alternative syntax
+
+See also https://github.com/Tortar/StructSumTypes.jl for an alternative syntax for defining sum types, and some other niceties.
 
 ## Performance
 
