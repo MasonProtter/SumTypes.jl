@@ -14,6 +14,12 @@ function _sum_type(T, hidden, blk)
     end
     
     @assert blk isa Expr && blk.head == :block
+
+    if T isa Expr && T.head == :(<:)
+        T, T_abstract = T.args
+    else
+        T, T_abstract = T, :(Any)
+    end
     T_name, T_params, T_params_constrained, T_param_bounds = if T isa Symbol
         T, [], [], []
     elseif T isa Expr && T.head == :curly
@@ -29,7 +35,7 @@ function _sum_type(T, hidden, blk)
     end
 
     con_expr, con_structs = generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
-    out = generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_param_bounds, T_nameparam, constructors)
+    out = generate_sum_struct_expr(T, T_abstract, T_name, T_params, T_params_constrained, T_param_bounds, T_nameparam, constructors)
     Expr(:toplevel, con_structs, out, con_expr) 
 end
 
@@ -212,7 +218,7 @@ end
 
 #------------------------------------------------------
 
-function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_param_bounds, T_nameparam, constructors)
+function generate_sum_struct_expr(T, T_abstract, T_name, T_params, T_params_constrained, T_param_bounds, T_nameparam, constructors)
     con_outer_types  = (x -> x.outer_type ).(constructors)
     con_gouter_types = (x -> x.gouter_type).(constructors)
     con_names        = (x -> x.name       ).(constructors)
@@ -220,7 +226,7 @@ function generate_sum_struct_expr(T, T_name, T_params, T_params_constrained, T_p
     store_types = (x -> x.store_type).(constructors)
     T_full = T
 
-    sum_struct_def = Expr(:struct, false, T_full,
+    sum_struct_def = Expr(:struct, false, Expr(:(<:), T_full, T_abstract),
                           Expr(:block, :(data :: ($Union){$(store_types...)}),  ))
     
     enumerate_constructors = collect(enumerate(constructors))
