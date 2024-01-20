@@ -2,6 +2,10 @@ using Test, SumTypes
 
 
 abstract type AbstractFoo end
+
+"""
+This is a Foo
+"""
 @sum_type Foo <: AbstractFoo begin
     Bar(::Int)
     Baz(x)
@@ -33,7 +37,8 @@ end
     @test Bar(1) isa Foo
     @test Bar(1) isa AbstractFoo
     @test_throws MethodError Foo(1)
-
+    @test string(@doc Foo) == "This is a Foo.\n"
+    
     function either_test(x::Either)
         let x::Either{Int, Int} = x
             @cases x begin
