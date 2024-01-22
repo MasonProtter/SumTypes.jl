@@ -36,7 +36,7 @@ function _sum_type(T, hidden, blk)
 
     con_expr, con_structs = generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
     out = generate_sum_struct_expr(T, T_abstract, T_name, T_params, T_params_constrained, T_param_bounds, T_nameparam, constructors)
-    Expr(:toplevel, con_structs, out, con_expr) 
+    Expr(:block, con_structs, out, con_expr) 
 end
 
 #------------------------------------------------------
@@ -143,7 +143,7 @@ end
 #------------------------------------------------------
 
 function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_nameparam, constructors)
-    out = Expr(:toplevel)
+    out = Expr(:block)
     converts = []
     con_structs = Expr(:block)
     @gensym _tag _T x 
