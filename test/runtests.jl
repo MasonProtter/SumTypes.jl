@@ -377,7 +377,8 @@ end
 
 #-------------------------------
 
-
+module ToplevelTest
+using Test, SumTypes
 @testset "Weird toplevel stuff" begin
     # https://github.com/MasonProtter/SumTypes.jl/issues/67
     @test @eval begin
@@ -390,5 +391,6 @@ end
         true
     end
 end
+end 
 
 end
