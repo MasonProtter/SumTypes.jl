@@ -1,4 +1,4 @@
-using Test, SumTypes
+using Test, SumTypes, REPL
 
 
 abstract type AbstractFoo end
