@@ -375,4 +375,20 @@ end
     end
 end
 
+#-------------------------------
+
+
+@testset "Weird toplevel stuff" begin
+    # https://github.com/MasonProtter/SumTypes.jl/issues/67
+    @test @eval begin
+        mutable struct A{X}
+            x::X
+        end
+        @sum_type B{X} begin
+            C{X}(a::A{X})
+        end
+        true
+    end
+end
+
 end
