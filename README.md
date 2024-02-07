@@ -313,7 +313,7 @@ If you overload `Base.show` directly inside a package, you might get annoying me
 
 ## Alternative syntax
 
-See also [StructSumTypes.jl](https://github.com/JuliaDynamics/MixedStructTypes.jl) for an alternative syntax for defining sum types, and some other niceties.
+See also [MixedStructTypes.jl](https://github.com/JuliaDynamics/MixedStructTypes.jl) for an alternative syntax for defining sum types, and some other niceties.
 
 ## Performance
 
