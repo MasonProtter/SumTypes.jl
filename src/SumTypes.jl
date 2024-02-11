@@ -66,6 +66,6 @@ Base.show(io::IO, x::Converter{T, U}) where {T, U} = print(io, "$T'.$U")
 
 include("sum_type.jl") # @sum_type defined here
 include("cases.jl")    # @cases    defined here
-
+include("precompile.jl")
 
 end # module
