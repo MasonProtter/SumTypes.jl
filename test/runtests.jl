@@ -393,6 +393,8 @@ using Test, SumTypes
 end
 end
 
+end
+
 #-------------------------------
             
 @sum_type WT{X,Y} begin
@@ -402,8 +404,10 @@ end
 
 @testset "Test creation inside vectors" begin
     # https://github.com/MasonProtter/SumTypes.jl/issues/66
-    @test [T(i) for i in 1:2] isa Vector{WT{Uninit, Int64}}
-    @test [T(1)] isa Vector{WT{Uninit, Int64}}
+    @test [T(i) for i in 1:2] isa Vector{WT{Uninit, Int}}
+    @test [T(1)] isa Vector{WT{Uninit, Int}}
     @test WT[T(1)] isa Vector{WT}
-    @test WT{Uninit,Int}[T(1)] isa Vector{WT{Uninit, Int64}}
+    @test WT{Uninit,Int}[T(1)] isa Vector{WT{Uninit, Int}}
+    @test WT{Int,Int}[T(1), W(1)] isa Vector{WT{Int, Int}}
+    @test [T(1), W(1)] isa Vector{WT}
 end
