@@ -393,4 +393,15 @@ using Test, SumTypes
 end
 end 
 
+@sum_type WT{X,Y} begin
+    W{X}(x::X)
+    T{Y}(y::Y)
+end
+
+@testset "Test creation inside vectors" begin
+    https://github.com/MasonProtter/SumTypes.jl/issues/66
+    [T(i) for i in 1:2]
+    [T(1)]
+    WT[T(1)]
+    WT{Int}[T(1)]       
 end
