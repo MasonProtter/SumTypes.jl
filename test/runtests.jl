@@ -391,8 +391,10 @@ using Test, SumTypes
         true
     end
 end
-end 
+end
 
+#-------------------------------
+            
 @sum_type WT{X,Y} begin
     W{X}(x::X)
     T{Y}(y::Y)
