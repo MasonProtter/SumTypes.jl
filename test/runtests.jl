@@ -403,5 +403,5 @@ end
     [T(i) for i in 1:2]
     [T(1)]
     WT[T(1)]
-    WT{Int}[T(1)]       
+    WT{Uninit,Int}[T(1)]       
 end
