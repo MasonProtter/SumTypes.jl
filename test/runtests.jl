@@ -401,7 +401,7 @@ end
 end
 
 @testset "Test creation inside vectors" begin
-    https://github.com/MasonProtter/SumTypes.jl/issues/66
+    # https://github.com/MasonProtter/SumTypes.jl/issues/66
     @test [T(i) for i in 1:2] isa Vector{WT{Uninit, Int64}}
     @test [T(1)] isa Vector{WT{Uninit, Int64}}
     @test WT[T(1)] isa Vector{WT}
