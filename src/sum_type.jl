@@ -199,7 +199,6 @@ function generate_constructor_exprs(T_name, T_params, T_params_constrained, T_na
         end
         if true
             push!(converts, T_uninit => quote
-                      $Base.convert(::$Type{$T_init}, $x::$T_uninit) where {$(T_params_constrained...)} = $T_init($unwrap($x)) 
                       $Base.convert(::$Type{<:$T_init}, $x::$T_uninit) where {$(T_params_constrained...)} = $T_init($unwrap($x)) 
                       (::$Type{<:$T_init})($x::$T_uninit) where {$(T_params_constrained...)} = $T_init($unwrap($x)) 
                       (::$Type{$T_init})($x::$T_uninit) where {$(T_params_constrained...)} = $T_init($unwrap($x)) 
