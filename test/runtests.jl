@@ -416,7 +416,7 @@ end
 #---------------
 
 @testset "Constrained type parameters in variants" begin
-    @sum_type QP{X, Y} begin
+    @sum_type QP{X<:Real, Y<:Real} begin
         Q{X<:AbstractFloat}(a::X)
         P{Y<:Integer}(b::Y)
     end
