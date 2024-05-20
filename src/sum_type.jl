@@ -28,7 +28,15 @@ function _sum_type(T, hidden, blk)
     T_nameparam = isempty(T_params) ? T : :($T_name{$(T_params...)})
     filter!(x -> !(x isa LineNumberNode), blk.args)
     
-    constructors = generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, blk)
+    constructors = generate_constructor_data(T_name, T_params, T_nameparam, hide_variants, blk)
+
+    variants_params = [nt.params for nt in constructors]
+    for p in setdiff(union(variants_params...), intersect(variants_params...))
+        i = findfirst(x -> x == p, T_params)
+        T_params_constrained[i] isa Symbol && continue
+        T_p_args = T_params_constrained[i].args
+        T_p_args[2] = :(Union{Uninit, $(T_p_args[2])})
+    end
     
     if !allunique(map(x -> x.name, constructors))
         error("constructors must have unique names, got $(map(x -> x.name, constructors))")
@@ -41,7 +49,7 @@ end
 
 #------------------------------------------------------
 
-function generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants,  blk::Expr)
+function generate_constructor_data(T_name, T_params, T_nameparam, hide_variants,  blk::Expr)
     constructors = []
     for con_ ∈ blk.args
         con_ isa LineNumberNode && continue
