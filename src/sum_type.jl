@@ -28,7 +28,6 @@ function _sum_type(T, hidden, blk)
     T_nameparam = isempty(T_params) ? T : :($T_name{$(T_params...)})
     filter!(x -> !(x isa LineNumberNode), blk.args)
     
-    #println([vdef.args[1] for blk.args)
     constructors = generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, blk)
     
     if !allunique(map(x -> x.name, constructors))
