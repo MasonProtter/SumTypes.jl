@@ -412,3 +412,16 @@ end
     @test WT{Int,Int}[T(1), W(1)] isa Vector{WT{Int, Int}}
     @test [T(1), W(1)] isa Vector{WT}
 end
+
+#---------------
+
+@testset "Constrained type parameters in variants" begin
+    @sum_type QP{X, Y} begin
+        Q{X<:AbstractFloat}(a::X)
+        P{Y<:Integer}(b::Y)
+    end
+    @test Q{Float64}(1.0) isa QP{Float64, SumTypes.Uninit} 
+    @test P{Int}(1.0) isa QP{SumTypes.Uninit, Int}
+    @test_throws TypeError Q{Int}(1.0)
+    @test_throws TypeError P{Float64}(1.0)
+end
