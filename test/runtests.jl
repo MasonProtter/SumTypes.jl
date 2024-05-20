@@ -426,7 +426,7 @@ end
     @test P{Int}(1.0) isa QPM{SumTypes.Uninit, Int, SumTypes.Uninit}
     @test P(1) isa QPM{SumTypes.Uninit, Int, SumTypes.Uninit}
     @test M(Int[]) isa QPM{SumTypes.Uninit, SumTypes.Uninit, Vector{Int}}
-    @test_throws TypeError Q{Int}(1.0, true)
+    @test_throws TypeError Q{Int, Bool}(1.0, true)
     @test_throws TypeError P{Float64}(1.0)
     @test_throws TypeError M{Bool}(true)   
 end
