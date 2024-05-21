@@ -35,7 +35,7 @@ function _sum_type(T, hidden, blk)
         i = findfirst(x -> x == p, T_params)
         T_params_constrained[i] isa Symbol && continue
         T_p_args = T_params_constrained[i].args
-        T_p_args[2] = :(Union{Uninit, $(T_p_args[2])})
+        T_p_args[2] = :(Union{$(SumTypes.Uninit), $(T_p_args[2])})
     end
     
     if !allunique(map(x -> x.name, constructors))
