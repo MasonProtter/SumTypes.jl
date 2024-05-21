@@ -28,7 +28,15 @@ function _sum_type(T, hidden, blk)
     T_nameparam = isempty(T_params) ? T : :($T_name{$(T_params...)})
     filter!(x -> !(x isa LineNumberNode), blk.args)
     
-    constructors = generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants, blk)
+    constructors = generate_constructor_data(T_name, T_params, T_nameparam, hide_variants, blk)
+
+    variants_params = [nt.params for nt in constructors]
+    for p in setdiff(union(variants_params...), intersect(variants_params...))
+        i = findfirst(x -> x == p, T_params)
+        T_params_constrained[i] isa Symbol && continue
+        T_p_args = T_params_constrained[i].args
+        T_p_args[2] = :(Union{Uninit, $(T_p_args[2])})
+    end
     
     if !allunique(map(x -> x.name, constructors))
         error("constructors must have unique names, got $(map(x -> x.name, constructors))")
@@ -41,7 +49,7 @@ end
 
 #------------------------------------------------------
 
-function generate_constructor_data(T_name, T_params, T_params_constrained, T_nameparam, hide_variants,  blk::Expr)
+function generate_constructor_data(T_name, T_params, T_nameparam, hide_variants,  blk::Expr)
     constructors = []
     for con_ ∈ blk.args
         con_ isa LineNumberNode && continue
@@ -71,7 +79,8 @@ function generate_constructor_data(T_name, T_params, T_params_constrained, T_nam
             con::Expr = con_
             con.head == :call || throw(ArgumentError("Malformed variant $con_"))
             con_name = con.args[1] isa Expr && con.args[1].head == :curly ? con.args[1].args[1] : con.args[1]
-            con_params = (con.args[1] isa Expr && con.args[1].head == :curly) ? con.args[1].args[2:end] : []
+            con_params_constrained = (con.args[1] isa Expr && con.args[1].head == :curly) ? con.args[1].args[2:end] : []
+            con_params = Any[p isa Expr && p.head == :(<:) ? p.args[1] : p for p in con_params_constrained]
             issubset(con_params, T_params) ||
                 error("constructor parameters ($con_params) for $con_name, not a subset of sum type parameters $T_params")
             con_params_uninit = let v = copy(con_params)
@@ -82,7 +91,6 @@ function generate_constructor_data(T_name, T_params, T_params_constrained, T_nam
                 end
                 v
             end
-            con_params_constrained = [T_params_constrained[i] for i ∈ eachindex(con_params_uninit) if con_params_uninit[i] != Uninit]
             con_nameparam = isempty(con_params) ? con_name : :($con_name{$(con_params...)})
             con_field_names = map(enumerate(con.args[2:end])) do (i, field)
                 @assert field isa Symbol || (field isa Expr && field.head == :(::)) "malformed constructor field $field"
