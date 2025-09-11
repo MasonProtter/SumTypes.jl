@@ -313,7 +313,7 @@ If you overload `Base.show` directly inside a package, you might get annoying me
 
 ## Alternative syntax
 
-See also [LightSumTypes.jl](https://github.com/JuliaDynamics/LightSumTypes.jl) for an alternative syntax for defining sum types, and some other niceties.
+See also [WrappedUnions.jl](https://github.com/Tortar/WrappedUnions.jl) for an alternative syntax for defining sum types, and some other niceties.
 
 ## Performance
 
