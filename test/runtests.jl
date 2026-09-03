@@ -466,3 +466,49 @@ end
         @test @allocated(count_eq(xs)) == 0
     end
 end
+
+function sum_hashes(xs)
+    h = zero(UInt)
+    for x in xs
+        h ⊻= hash(x)::UInt
+    end
+    h
+end
+
+@testset "hash and isequal" begin
+    @test hash(Circle(1.0)) == hash(Circle(1.0))
+    @test hash(Circle(1.0)) != hash(Square(1.0))
+    @test isequal(Circle(1.0), Circle(1.0))
+    @test !isequal(Circle(1.0), Square(1.0))
+
+    # `isequal`/`hash` follow their usual stricter-than-`==` semantics on the data
+    @test Circle(NaN) != Circle(NaN)
+    @test isequal(Circle(NaN), Circle(NaN))
+    @test hash(Circle(NaN)) == hash(Circle(NaN))
+    @test Circle(0.0) == Circle(-0.0)
+    @test !isequal(Circle(0.0), Circle(-0.0))
+    # hash is consistent with isequal (not ==), mirroring Base: hash(0.0) != hash(-0.0)
+    @test (hash(Circle(0.0)) == hash(Circle(-0.0))) == (hash(0.0) == hash(-0.0))
+    @test ismissing(Left(missing) == Left(missing))
+    @test isequal(Left(missing), Left(missing))
+
+    # equal values must hash equal across different parameterizations
+    let x = convert(Either{Int, Int}, Left(1)), y = Left(1)
+        @test x == y
+        @test isequal(x, y)
+        @test hash(x) == hash(y)
+    end
+
+    # Dict usage
+    d = Dict(Circle(1.0) => 1, Square(2.0) => 2, Circle(NaN) => 3)
+    @test d[Circle(1.0)] == 1
+    @test d[Square(2.0)] == 2
+    @test d[Circle(NaN)] == 3
+    @test !haskey(d, Rectangle(1.0, 2.0))
+
+    if !coverage_enabled
+        xs = [rand((Circle(rand()), Square(rand()), Rectangle(rand(), rand()))) for _ in 1:100]
+        sum_hashes(xs)
+        @test @allocated(sum_hashes(xs)) == 0
+    end
+end
