@@ -283,12 +283,10 @@ function generate_sum_struct_expr(T, T_abstract, T_name, T_params, T_params_cons
     ex = quote
         $sum_struct_def
         function $Base.propertynames(::$T_name)
-            $Base.depwarn("propertynames of a SumType is not intended to be used. Use `SumTypes.unwrap` if you need to access SumType internals", $nothing)
-            ()
+            $Base.error("propertynames of a SumType is not supported. Use `SumTypes.unwrap` if you need to access SumType internals")
         end
         function $Base.getproperty($st::$T_name, $s::Symbol)
-            $Base.depwarn("getproperty on a SumType is not intended to be used. Use `SumTypes.unwrap` if you need to access SumType internals", $nothing)
-            $Base.getfield($st, $s)
+            $Base.error("getproperty on a SumType is not supported. Use `SumTypes.unwrap` if you need to access SumType internals")
         end
         $SumTypes.is_sumtype(::Type{<:$T_name}) = true
         $SumTypes.constructors(::Type{<:$T_name}) =

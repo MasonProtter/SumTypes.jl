@@ -145,6 +145,8 @@ end
         @test SumTypes.isvariant(x, :Left) == true
         @test SumTypes.isvariant(x, :Right) == false
         @test SumTypes.unwrap(x)[1] == 1.0
+        @test_throws ErrorException x.data
+        @test_throws ErrorException propertynames(x)
     end
 end
 
