@@ -442,12 +442,14 @@ end
     Rectangle(::Float64, ::Float64)
 end
 
+# Returns `% Int8` so the result is always in the interned-box cache: on Julia ≤ 1.10,
+# @allocated otherwise counts the boxing of the measured expression's return value itself.
 function count_eq(xs)
     n = 0
     for i in eachindex(xs), j in eachindex(xs)
         n += (xs[i] == xs[j])::Bool
     end
-    n
+    n % Int8
 end
 
 @testset "Statically resolvable ==" begin
@@ -467,12 +469,14 @@ end
     end
 end
 
+# Returns `% Int8` so the result is always in the interned-box cache: on Julia ≤ 1.10,
+# @allocated otherwise counts the boxing of the measured expression's return value itself.
 function sum_hashes(xs)
     h = zero(UInt)
     for x in xs
         h ⊻= hash(x)::UInt
     end
-    h
+    h % Int8
 end
 
 @testset "hash and isequal" begin
