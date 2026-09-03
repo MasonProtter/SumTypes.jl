@@ -44,6 +44,7 @@ struct Variant{name, fieldnames, Tup <: Tuple}
 end
 get_name(::Variant{name}) where {name} = name
 Base.:(==)(v1::Variant{name}, v2::Variant{name}) where {name} = v1.data == v2.data
+Base.isequal(v1::Variant{name}, v2::Variant{name}) where {name} = isequal(v1.data, v2.data)
 
 Base.iterate(x::Variant, s = 1) = iterate(x.data, s)
 Base.indexed_iterate(x::Variant, i::Int, state=1) = (Base.@_inline_meta; (getfield(x.data, i), i+1))

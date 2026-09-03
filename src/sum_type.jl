@@ -245,6 +245,25 @@ function generate_sum_struct_expr(T, T_abstract, T_name, T_params, T_params_cons
     ifnest_get_tag = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old),  enumerate_constructors, init=:THIS_SHOULD_BE_UNREACHABLE) do (i, nt)
         :(unwrapped isa $(nt.store_type)), :($(QuoteNode(nt.name)))
     end
+
+    # Comparing the unwrapped data directly would be a `==(::Union{...}, ::Union{...})` call whose
+    # N×N method combinations defeat union splitting (and thus `--trim`) for N > 2, so nest `isa`
+    # branches that narrow both sides to the same variant before comparing.
+    @gensym ux uy hsh
+    ifnest_equal = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), constructors, init=false) do nt
+        V = :($Variant{$(QuoteNode(nt.name))})
+        :($ux isa $V), :($uy isa $V && $Base.:(==)($ux, $uy))
+    end
+    ifnest_isequal = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), constructors, init=false) do nt
+        V = :($Variant{$(QuoteNode(nt.name))})
+        :($ux isa $V), :($uy isa $V && $Base.isequal($ux, $uy))
+    end
+    # Hash the variant's tag and data tuple, not its concrete Variant type, so that values which
+    # compare `==`/`isequal` across different parameterizations of the sum type hash equal too.
+    ifnest_hash = mapfoldr(((cond, data), old) -> Expr(:if, cond, data, old), constructors, init=:THIS_SHOULD_BE_UNREACHABLE) do nt
+        V = :($Variant{$(QuoteNode(nt.name))})
+        :($ux isa $V), :($Base.hash($getfield($ux, :data), $Base.hash($(QuoteNode(nt.name)), $hsh)))
+    end
     
     only_define_with_params = if !isempty(T_params)
         @gensym x
@@ -291,7 +310,15 @@ function generate_sum_struct_expr(T, T_abstract, T_name, T_params, T_params_cons
         $Base.show(io::IO, x::$T_name) = $show_sumtype(io, x)
         $Base.show(io::IO, m::MIME"text/plain", x::$T_name) = $show_sumtype(io, m, x)
 
-        Base.:(==)(x::$T_name, y::$T_name) = $Base.:(==)($unwrap(x), $unwrap(y))
+        $Base.:(==)(x::$T_name, y::$T_name) = let $ux = $unwrap(x), $uy = $unwrap(y)
+            $ifnest_equal
+        end
+        $Base.isequal(x::$T_name, y::$T_name) = let $ux = $unwrap(x), $uy = $unwrap(y)
+            $ifnest_isequal
+        end
+        $Base.hash(x::$T_name, h::$UInt) = let $ux = $unwrap(x), $hsh = $Base.hash($(QuoteNode(T_name)), h)
+            $ifnest_hash
+        end
         $only_define_with_params
     end
     foreach(constructors) do nt

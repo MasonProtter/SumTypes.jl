@@ -222,8 +222,11 @@ foo!(xs) = for i in eachindex(xs)
         D => A()
     end
 end
-#CI Doesn't like this test so just disable it in CI
-if !haskey(ENV, "CI") || ENV["CI"] != "true"
+# Coverage instrumentation makes @allocated spuriously nonzero, so only
+# check allocations when this process was started without --code-coverage
+const coverage_enabled = Base.JLOptions().code_coverage != 0
+
+if !coverage_enabled
     @testset "Allocation-free @cases" begin
         xs = map(x->rand((A(), B(), C(), D())), 1:10000);
         foo!(xs)
@@ -428,5 +431,88 @@ end
     @test M(Int[]) isa QPM{SumTypes.Uninit, SumTypes.Uninit, Vector{Int}}
     @test_throws TypeError Q{Int, Bool}(1.0, true)
     @test_throws TypeError P{Float64}(1.0)
-    @test_throws TypeError M{Bool}(true)   
+    @test_throws TypeError M{Bool}(true)
+end
+
+#---------------
+
+@sum_type Shape begin
+    Circle(::Float64)
+    Square(::Float64)
+    Rectangle(::Float64, ::Float64)
+end
+
+# Returns `% Int8` so the result is always in the interned-box cache: on Julia ≤ 1.10,
+# @allocated otherwise counts the boxing of the measured expression's return value itself.
+function count_eq(xs)
+    n = 0
+    for i in eachindex(xs), j in eachindex(xs)
+        n += (xs[i] == xs[j])::Bool
+    end
+    n % Int8
+end
+
+@testset "Statically resolvable ==" begin
+    # https://github.com/MasonProtter/SumTypes.jl/issues/83
+    @test Circle(1.0) == Circle(1.0)
+    @test Circle(1.0) != Circle(2.0)
+    @test Circle(1.0) != Square(1.0)
+    @test Rectangle(1.0, 2.0) == Rectangle(1.0, 2.0)
+
+    # Dynamic dispatch in the generated `==` would force boxing of the variant
+    # data (and break `juliac --trim`); a statically resolved `==` is
+    # allocation-free even with 3+ variants.
+    if !coverage_enabled
+        xs = [rand((Circle(rand()), Square(rand()), Rectangle(rand(), rand()))) for _ in 1:100]
+        count_eq(xs)
+        @test @allocated(count_eq(xs)) == 0
+    end
+end
+
+# Returns `% Int8` so the result is always in the interned-box cache: on Julia ≤ 1.10,
+# @allocated otherwise counts the boxing of the measured expression's return value itself.
+function sum_hashes(xs)
+    h = zero(UInt)
+    for x in xs
+        h ⊻= hash(x)::UInt
+    end
+    h % Int8
+end
+
+@testset "hash and isequal" begin
+    @test hash(Circle(1.0)) == hash(Circle(1.0))
+    @test hash(Circle(1.0)) != hash(Square(1.0))
+    @test isequal(Circle(1.0), Circle(1.0))
+    @test !isequal(Circle(1.0), Square(1.0))
+
+    # `isequal`/`hash` follow their usual stricter-than-`==` semantics on the data
+    @test Circle(NaN) != Circle(NaN)
+    @test isequal(Circle(NaN), Circle(NaN))
+    @test hash(Circle(NaN)) == hash(Circle(NaN))
+    @test Circle(0.0) == Circle(-0.0)
+    @test !isequal(Circle(0.0), Circle(-0.0))
+    # hash is consistent with isequal (not ==), mirroring Base: hash(0.0) != hash(-0.0)
+    @test (hash(Circle(0.0)) == hash(Circle(-0.0))) == (hash(0.0) == hash(-0.0))
+    @test ismissing(Left(missing) == Left(missing))
+    @test isequal(Left(missing), Left(missing))
+
+    # equal values must hash equal across different parameterizations
+    let x = convert(Either{Int, Int}, Left(1)), y = Left(1)
+        @test x == y
+        @test isequal(x, y)
+        @test hash(x) == hash(y)
+    end
+
+    # Dict usage
+    d = Dict(Circle(1.0) => 1, Square(2.0) => 2, Circle(NaN) => 3)
+    @test d[Circle(1.0)] == 1
+    @test d[Square(2.0)] == 2
+    @test d[Circle(NaN)] == 3
+    @test !haskey(d, Rectangle(1.0, 2.0))
+
+    if !coverage_enabled
+        xs = [rand((Circle(rand()), Square(rand()), Rectangle(rand(), rand()))) for _ in 1:100]
+        sum_hashes(xs)
+        @test @allocated(sum_hashes(xs)) == 0
+    end
 end
