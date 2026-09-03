@@ -222,8 +222,11 @@ foo!(xs) = for i in eachindex(xs)
         D => A()
     end
 end
-#CI Doesn't like this test so just disable it in CI
-if !haskey(ENV, "CI") || ENV["CI"] != "true"
+# Coverage instrumentation makes @allocated spuriously nonzero, so only
+# check allocations when this process was started without --code-coverage
+const coverage_enabled = Base.JLOptions().code_coverage != 0
+
+if !coverage_enabled
     @testset "Allocation-free @cases" begin
         xs = map(x->rand((A(), B(), C(), D())), 1:10000);
         foo!(xs)
@@ -428,5 +431,38 @@ end
     @test M(Int[]) isa QPM{SumTypes.Uninit, SumTypes.Uninit, Vector{Int}}
     @test_throws TypeError Q{Int, Bool}(1.0, true)
     @test_throws TypeError P{Float64}(1.0)
-    @test_throws TypeError M{Bool}(true)   
+    @test_throws TypeError M{Bool}(true)
+end
+
+#---------------
+
+@sum_type Shape begin
+    Circle(::Float64)
+    Square(::Float64)
+    Rectangle(::Float64, ::Float64)
+end
+
+function count_eq(xs)
+    n = 0
+    for i in eachindex(xs), j in eachindex(xs)
+        n += (xs[i] == xs[j])::Bool
+    end
+    n
+end
+
+@testset "Statically resolvable ==" begin
+    # https://github.com/MasonProtter/SumTypes.jl/issues/83
+    @test Circle(1.0) == Circle(1.0)
+    @test Circle(1.0) != Circle(2.0)
+    @test Circle(1.0) != Square(1.0)
+    @test Rectangle(1.0, 2.0) == Rectangle(1.0, 2.0)
+
+    # Dynamic dispatch in the generated `==` would force boxing of the variant
+    # data (and break `juliac --trim`); a statically resolved `==` is
+    # allocation-free even with 3+ variants.
+    if !coverage_enabled
+        xs = [rand((Circle(rand()), Square(rand()), Rectangle(rand(), rand()))) for _ in 1:100]
+        count_eq(xs)
+        @test @allocated(count_eq(xs)) == 0
+    end
 end
