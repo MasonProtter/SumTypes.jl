@@ -45,7 +45,7 @@ julia> banana
 banana::Fruit
 
 julia> orange
-brange::Fruit
+orange::Fruit
 
 julia> typeof(apple) == typeof(banana) == typeof(orange) == Fruit
 true
